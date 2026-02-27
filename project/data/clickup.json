@@ -1,0 +1,371 @@
+{
+  "spaces": [
+    {
+      "space_id": "space_001",
+      "space_name": "Klar-Lixus PoC",
+      "description": "Agentic AI Platform Development"
+    }
+  ],
+  "teams": [
+    {
+      "team_id": "team_001",
+      "team_name": "Lixus Agents (Test Data)",
+      "space_id": "space_001",
+      "description": "Marketing agents managing client campaigns"
+    }
+  ],
+  "lists": [
+    {
+      "list_id": "list_001",
+      "team_id": "team_001",
+      "list_name": "Campaign Queries",
+      "description": "Questions agents ask about campaign performance"
+    },
+    {
+      "list_id": "list_002",
+      "team_id": "team_001",
+      "list_name": "Client Follow-ups",
+      "description": "Client communication and follow-up tasks"
+    }
+  ],
+  "custom_fields": [
+    {
+      "field_id": "field_001",
+      "field_name": "Query Type",
+      "field_type": "dropdown",
+      "options": [
+        "Sales Performance",
+        "Campaign Metrics",
+        "Customer Insights",
+        "Trend Analysis",
+        "Retention Analysis"
+      ]
+    },
+    {
+      "field_id": "field_002",
+      "field_name": "Brand",
+      "field_type": "dropdown",
+      "options": [
+        "Kopi_Brand_A",
+        "Fashion_Brand_B",
+        "Restoran_Brand_C"
+      ]
+    },
+    {
+      "field_id": "field_003",
+      "field_name": "Date Range",
+      "field_type": "text",
+      "example": "2026-02-24 to 2026-02-25"
+    },
+    {
+      "field_id": "field_004",
+      "field_name": "Priority",
+      "field_type": "dropdown",
+      "options": [
+        "Low",
+        "Medium",
+        "High",
+        "Urgent"
+      ]
+    },
+    {
+      "field_id": "field_005",
+      "field_name": "AI Confidence Score",
+      "field_type": "number",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "field_id": "field_006",
+      "field_name": "Resolution Status",
+      "field_type": "dropdown",
+      "options": [
+        "AI Direct Send",
+        "AM Review Required",
+        "Escalated"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "task_001",
+      "list_id": "list_001",
+      "task_name": "What was total revenue yesterday (Feb 24)?",
+      "description": "Agent: Siti | Brand: Kopi_Brand_A | Need daily sales summary for client report",
+      "status": "closed",
+      "date_created": "2026-02-25T08:00:00Z",
+      "date_due": "2026-02-25T10:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Kopi_Brand_A",
+        "Date Range": "2026-02-24",
+        "Priority": "High",
+        "AI Confidence Score": 97,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "Revenue yesterday (Feb 24) at Kopi_Brand_A: IDR 236,500 (2 transactions, 8 items sold, avg value IDR 118,250)",
+      "ai_response_accuracy": "correct"
+    },
+    {
+      "task_id": "task_002",
+      "list_id": "list_001",
+      "task_name": "How many new customers at Fashion_Brand_B on Feb 24?",
+      "description": "Agent: Budi | Brand: Fashion_Brand_B | Customer acquisition tracking",
+      "status": "in_review",
+      "date_created": "2026-02-25T08:30:00Z",
+      "date_due": "2026-02-25T09:30:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Customer Insights",
+        "Brand": "Fashion_Brand_B",
+        "Date Range": "2026-02-24",
+        "Priority": "Medium",
+        "AI Confidence Score": 85,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "## Jawaban\n\n**Data untuk Fashion_Brand_B (store_002) pada 24 Feb 2026:**\n\n| Metrik | Nilai |\n|--------|-------|\n| Total Transaksi | 1 |\n| Total Revenue | Rp 973.500 |\n| Total Items Sold | 4 |\n| Avg Transaction Value | Rp 973.500 |\n\n---\n\n**Catatan:** \n\nDari data yang tersedia melalui `get_date_range_metrics`, **tidak ada informasi mengenai pelanggan baru (new customers)**. Metrics yang tersedia hanya mencakup data agregat transaksi dan revenue, tanpa detail mengenai identitas atau status pelanggan (baru/lama).\n\nUntuk mengetahui jumlah pelanggan baru, diperlukan data customer-level yang tidak tersedia dalam tools yang disediakan.\n\n**CONFIDENCE: 65** (Data tidak tersedia untuk menjawab pertanyaan spesifik tentang new customers)",
+      "ai_response_accuracy": "correct",
+      "comments": [
+        {
+          "comment_id": "7487af67",
+          "author": "AI Agent",
+          "text": "🤖 AI Agent Reasoning\nState: SALES_REVENUE\nTools dipanggil: get_date_range_metrics(['2026-02-24', '2026-02-24', 'store_002'])\nConfidence: 85% — Data parsial\nResolution: AI Direct Send",
+          "timestamp": "2026-02-27T09:26:53.709514+00:00"
+        }
+      ]
+    },
+    {
+      "task_id": "task_003",
+      "list_id": "list_001",
+      "task_name": "Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)",
+      "description": "Agent: Ahmad | Brand: Kopi_Brand_A | Monthly trend for strategic planning",
+      "status": "escalated",
+      "date_created": "2026-02-25T09:00:00Z",
+      "date_due": "2026-02-25T16:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Trend Analysis",
+        "Brand": "Kopi_Brand_A",
+        "Date Range": "2026-01-01 to 2026-02-25",
+        "Priority": "High",
+        "AI Confidence Score": 65,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": "## Trend Analysis: Revenue Jan 2026 vs Feb 2026\n**Brand:** Kopi_Brand_A | **Store:** store_001\n\n### Hasil Data:\n\n| Periode | Total Revenue (IDR) | Total Transaksi | Rata-rata/Transaksi |\n|---------|---------------------|-----------------|---------------------|\n| **Jan 2026** (1-31 Jan) | - | - | - |\n| **Feb 2026** (1-25 Feb) | Rp 275.000 | 3 | Rp 91.666 |\n\n### Kesimpulan:\n- **Data Januari 2026 TIDAK TERSEDIA** di sistem untuk store_001\n- **Data Februari 2026** hanya ada untuk tanggal **23-24 Feb 2026** (3 transaksi)\n- Karena Perbandingan tidak bisa dilakukan secara apples-to-apples (data tidak lengkap)\n\n### Catatan:\nData yang tersedia sangat terbatas. Untuk analisis trend yang akurat, diperlukan data penjualan yang lebih lengkap.\n\n---\n\n**Rekomendasi:** Pastikan semua data transaksi sudah terintegrasi ke sistem Loyverse, atau cek kembali apakah ada masalah dengan sinkronisasi data Januari 2026.",
+      "ai_response_accuracy": "correct_escalation",
+      "comments": [
+        {
+          "comment_id": "0e530af9",
+          "author": "AI Agent",
+          "text": "🤖 AI Agent Reasoning\nState: TREND_ANALYSIS\nTools dipanggil: get_date_range_metrics(['2026-01-31', '2026-01-01', 'store_001']), get_date_range_metrics(['2026-02-25', '2026-02-01', 'store_001'])\nConfidence: 65% — Data tidak mencukupi / historical\nResolution: AM Review Required",
+          "timestamp": "2026-02-27T09:23:29.137480+00:00"
+        }
+      ]
+    },
+    {
+      "task_id": "task_004",
+      "list_id": "list_002",
+      "task_name": "Client Report: Fashion_Brand_B Top Products Feb 24",
+      "description": "Agent: Budi | Prepare weekly client report on product performance",
+      "status": "open",
+      "date_created": "2026-02-25T10:00:00Z",
+      "date_due": "2026-02-25T14:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Fashion_Brand_B",
+        "Date Range": "2026-02-24",
+        "Priority": "High",
+        "AI Confidence Score": 92,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "Top products at Fashion_Brand_B on Feb 24: 1. Jeans Premium (IDR 450,000, qty 1), 2. Cotton T-Shirt (IDR 150,000, qty 3). Total revenue: IDR 973,500",
+      "ai_response_accuracy": "correct"
+    },
+    {
+      "task_id": "task_005",
+      "list_id": "list_001",
+      "task_name": "Which employees had the most transactions on Feb 24?",
+      "description": "Agent: Siti | Performance tracking for staff management",
+      "status": "in_review",
+      "date_created": "2026-02-25T10:30:00Z",
+      "date_due": "2026-02-25T11:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Kopi_Brand_A",
+        "Date Range": "2026-02-24",
+        "Priority": "Low",
+        "AI Confidence Score": 85,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "## Hasil Analisis Employee Performance\n\n**Tanggal:** 24 February 2026 | **Store:** store_001 (Kopi_Brand_A)\n\n### Karyawan dengan Transaksi Terbanyak:\n\n| Karyawan | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\n**Catatan:** Hanya ada 1 karyawan yang tercatat melakukan transaksi pada tanggal tersebut, yaitu Ahmad Barista dengan 2 transaksi dan total revenue Rp 236.500.",
+      "ai_response_accuracy": "correct",
+      "comments": [
+        {
+          "comment_id": "43b54f8e",
+          "author": "AI Agent",
+          "text": "🤖 AI Agent Reasoning\nState: PRODUCT_PERFORMANCE\nTools dipanggil: get_employee_performance(['2026-02-24', 'store_001'])\nConfidence: 85% — Data parsial\nResolution: AI Direct Send",
+          "timestamp": "2026-02-27T09:21:24.508023+00:00"
+        }
+      ]
+    },
+    {
+      "task_id": "task_006",
+      "list_id": "list_001",
+      "task_name": "Customer retention: Repeat vs new customers, last 3 days",
+      "description": "Agent: Ahmad | Retention analysis for client strategy",
+      "status": "open",
+      "date_created": "2026-02-25T11:00:00Z",
+      "date_due": "2026-02-25T18:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Retention Analysis",
+        "Brand": "Kopi_Brand_A",
+        "Date Range": "2026-02-23 to 2026-02-25",
+        "Priority": "High",
+        "AI Confidence Score": 85,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": "Kopi_Brand_A last 3 days: 50% repeat customers (1/2 on Feb 24), 100% new on Feb 23. Limited data; recommend collecting 30-day history for robust retention metrics.",
+      "ai_response_accuracy": "correct_with_caveat"
+    },
+    {
+      "task_id": "task_007",
+      "list_id": "list_001",
+      "task_name": "What was total revenue yesterday (Feb 24) at Restoran Padang Surabaya?",
+      "description": "Agent: Hendra | Brand: Restoran_Brand_C | Daily sales summary for client report",
+      "status": "closed",
+      "date_created": "2026-02-25T12:00:00Z",
+      "date_due": "2026-02-25T13:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Restoran_Brand_C",
+        "Date Range": "2026-02-24",
+        "Priority": "High",
+        "AI Confidence Score": 98,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "Revenue yesterday (Feb 24) at Restoran_Brand_C: IDR 728,200 (2 transactions, 20 items sold, avg value IDR 364,100). Top product: Nasi Padang Spesial",
+      "ai_response_accuracy": "correct"
+    },
+    {
+      "task_id": "task_008",
+      "list_id": "list_001",
+      "task_name": "Top 3 selling products at Restoran_Brand_C on Feb 24?",
+      "description": "Agent: Rina | Product performance tracking for inventory planning",
+      "status": "closed",
+      "date_created": "2026-02-25T12:30:00Z",
+      "date_due": "2026-02-25T13:30:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Restoran_Brand_C",
+        "Date Range": "2026-02-24",
+        "Priority": "Medium",
+        "AI Confidence Score": 96,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "Top 3 products at Restoran_Brand_C on Feb 24: 1. Nasi Padang Spesial (qty 9, IDR 405,000 revenue), 2. Es Cendol (qty 9, IDR 157,000), 3. Rendang Daging (qty 2, IDR 110,000)",
+      "ai_response_accuracy": "correct"
+    },
+    {
+      "task_id": "task_009",
+      "list_id": "list_001",
+      "task_name": "Employee performance: Who handled more transactions on Feb 24 at Restoran_Brand_C?",
+      "description": "Agent: Hendra | Staff performance tracking for management review",
+      "status": "closed",
+      "date_created": "2026-02-25T13:00:00Z",
+      "date_due": "2026-02-25T14:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Restoran_Brand_C",
+        "Date Range": "2026-02-24",
+        "Priority": "Low",
+        "AI Confidence Score": 94,
+        "Resolution Status": "AI Direct Send"
+      },
+      "ai_response": "Employee performance at Restoran_Brand_C on Feb 24: Hendra Chef (1 transaction, IDR 387,200 total, 10 items), Rina Waitress (1 transaction, IDR 341,000 total, 10 items). Equal transactions, Hendra slightly higher revenue.",
+      "ai_response_accuracy": "correct"
+    },
+    {
+      "task_id": "esc_3abfd0fb",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)",
+      "description": "Parent: task_003 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 65% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-02-27T09:23:29.138751+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_003"
+    }
+  ],
+  "query_examples_for_testing": [
+    {
+      "query_id": "q_001",
+      "question": "What was total revenue yesterday at Kopi_Brand_A?",
+      "expected_tool_call": "query_daily_summary(store_id='store_001', date='2026-02-24')",
+      "expected_answer": "IDR 236,500 (2 transactions)"
+    },
+    {
+      "query_id": "q_002",
+      "question": "Show me top 3 products by revenue at Fashion_Brand_B today",
+      "expected_tool_call": "query_top_products(store_id='store_002', date='2026-02-24', limit=3)",
+      "expected_answer": "1. Jeans Premium (IDR 450,000, qty 1), 2. Cotton T-Shirt (IDR 150,000, qty 3)"
+    },
+    {
+      "query_id": "q_003",
+      "question": "How many new customers at Kopi_Brand_A on Feb 24?",
+      "expected_tool_call": "query_daily_summary(store_id='store_001', date='2026-02-24')",
+      "expected_answer": "1 new customer (out of 2 total)"
+    },
+    {
+      "query_id": "q_004",
+      "question": "What's the revenue trend for Fashion_Brand_B comparing Jan vs Feb?",
+      "expected_tool_call": "query_monthly_summary(store_id='store_002', month='2026-01') + query_monthly_summary(store_id='store_002', month='2026-02')",
+      "expected_answer": "ESCALATE: Insufficient historical data (sample only covers Feb 24-25)"
+    },
+    {
+      "query_id": "q_005",
+      "question": "Which employees earned the most loyalty points for the store on Feb 24?",
+      "expected_tool_call": "query_employee_performance(store_id='store_001', date='2026-02-24')",
+      "expected_answer": "Ahmad Barista (209 points earned from customers)"
+    },
+    {
+      "query_id": "q_006",
+      "question": "What was total revenue yesterday at Restoran_Brand_C?",
+      "expected_tool_call": "get_daily_summary(store_id='store_003', date='2026-02-24')",
+      "expected_answer": "IDR 728,200 (2 transactions, 20 items sold, avg IDR 364,100)"
+    },
+    {
+      "query_id": "q_007",
+      "question": "Show me top 3 products by revenue at Restoran_Brand_C today",
+      "expected_tool_call": "get_top_products(store_id='store_003', date='2026-02-24', limit=3)",
+      "expected_answer": "1. Nasi Padang Spesial (qty 9, IDR 405,000), 2. Es Cendol (qty 9, IDR 157,000), 3. Rendang Daging (qty 2, IDR 110,000)"
+    },
+    {
+      "query_id": "q_008",
+      "question": "How many new customers at Restoran_Brand_C on Feb 24?",
+      "expected_tool_call": "get_daily_summary(store_id='store_003', date='2026-02-24')",
+      "expected_answer": "2 new customers (100% new customers, no repeat)"
+    },
+    {
+      "query_id": "q_009",
+      "question": "What's the employee performance ranking for Restoran_Brand_C yesterday (Feb 25)?",
+      "expected_tool_call": "get_employee_performance(store_id='store_003', date='2026-02-25')",
+      "expected_answer": "1. Hendra Chef (2 transactions, IDR 408,100 revenue, 407 loyalty points), 2. Rina Waitress (1 transaction, IDR 235,400 revenue, 235 loyalty points)"
+    }
+  ]
+}

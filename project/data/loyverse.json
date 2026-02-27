@@ -1,0 +1,527 @@
+{
+  "stores": [
+    {
+      "store_id": "store_001",
+      "store_name": "Toko Kopi Bandung",
+      "brand": "Kopi_Brand_A",
+      "location": "Bandung, Indonesia",
+      "currency": "IDR",
+      "timezone": "Asia/Jakarta",
+      "created_date": "2025-01-15"
+    },
+    {
+      "store_id": "store_002",
+      "store_name": "Boutique Jakarta",
+      "brand": "Fashion_Brand_B",
+      "location": "Jakarta, Indonesia",
+      "currency": "IDR",
+      "timezone": "Asia/Jakarta",
+      "created_date": "2025-02-01"
+    },
+    {
+      "store_id": "store_003",
+      "store_name": "Restoran Padang Surabaya",
+      "brand": "Restoran_Brand_C",
+      "location": "Surabaya, Indonesia",
+      "currency": "IDR",
+      "timezone": "Asia/Jakarta",
+      "created_date": "2025-12-20"
+    }
+  ],
+  "products": [
+    {
+      "product_id": "prod_001",
+      "store_id": "store_001",
+      "product_name": "Espresso Single Shot",
+      "category": "Beverages",
+      "sku": "ESPRESSO-SS",
+      "price_idr": 25000,
+      "cost_idr": 8000,
+      "stock_qty": 500,
+      "barcode": "8901234567890"
+    },
+    {
+      "product_id": "prod_002",
+      "store_id": "store_001",
+      "product_name": "Cappuccino",
+      "category": "Beverages",
+      "sku": "CAPPUCCINO-M",
+      "price_idr": 35000,
+      "cost_idr": 12000,
+      "stock_qty": 450,
+      "barcode": "8901234567891"
+    },
+    {
+      "product_id": "prod_003",
+      "store_id": "store_002",
+      "product_name": "Cotton T-Shirt",
+      "category": "Apparel",
+      "sku": "TSHIRT-BLK-M",
+      "price_idr": 150000,
+      "cost_idr": 50000,
+      "stock_qty": 120,
+      "barcode": "8901234567892"
+    },
+    {
+      "product_id": "prod_004",
+      "store_id": "store_002",
+      "product_name": "Jeans Premium",
+      "category": "Apparel",
+      "sku": "JEANS-BLU-32",
+      "price_idr": 450000,
+      "cost_idr": 180000,
+      "stock_qty": 85,
+      "barcode": "8901234567893"
+    },
+    {
+      "product_id": "prod_005",
+      "store_id": "store_003",
+      "product_name": "Nasi Padang Spesial",
+      "category": "Main Course",
+      "sku": "NASI-PADANG-SP",
+      "price_idr": 45000,
+      "cost_idr": 15000,
+      "stock_qty": 200,
+      "barcode": "8901234567894"
+    },
+    {
+      "product_id": "prod_006",
+      "store_id": "store_003",
+      "product_name": "Rendang Daging",
+      "category": "Main Course",
+      "sku": "RENDANG-DAGING",
+      "price_idr": 55000,
+      "cost_idr": 22000,
+      "stock_qty": 150,
+      "barcode": "8901234567895"
+    },
+    {
+      "product_id": "prod_007",
+      "store_id": "store_003",
+      "product_name": "Es Cendol",
+      "category": "Beverage",
+      "sku": "ES-CENDOL",
+      "price_idr": 18000,
+      "cost_idr": 5000,
+      "stock_qty": 300,
+      "barcode": "8901234567896"
+    }
+  ],
+  "employees": [
+    {
+      "employee_id": "emp_001",
+      "store_id": "store_001",
+      "employee_name": "Ahmad Barista",
+      "role": "Barista",
+      "email": "ahmad@loyverse.test",
+      "phone": "08123456789",
+      "created_date": "2025-01-20",
+      "status": "active"
+    },
+    {
+      "employee_id": "emp_002",
+      "store_id": "store_001",
+      "employee_name": "Siti Manager",
+      "role": "Manager",
+      "email": "siti@loyverse.test",
+      "phone": "08198765432",
+      "created_date": "2025-01-15",
+      "status": "active"
+    },
+    {
+      "employee_id": "emp_003",
+      "store_id": "store_002",
+      "employee_name": "Budi Sales",
+      "role": "Sales Associate",
+      "email": "budi@loyverse.test",
+      "phone": "08111223344",
+      "created_date": "2025-02-05",
+      "status": "active"
+    },
+    {
+      "employee_id": "emp_004",
+      "store_id": "store_003",
+      "employee_name": "Hendra Chef",
+      "role": "Chef",
+      "email": "hendra@loyverse.test",
+      "phone": "08155667788",
+      "created_date": "2025-12-20",
+      "status": "active"
+    },
+    {
+      "employee_id": "emp_005",
+      "store_id": "store_003",
+      "employee_name": "Rina Waitress",
+      "role": "Waitress",
+      "email": "rina@loyverse.test",
+      "phone": "08144556677",
+      "created_date": "2025-12-25",
+      "status": "active"
+    }
+  ],
+  "transactions": [
+    {
+      "transaction_id": "txn_20260224_001",
+      "store_id": "store_001",
+      "employee_id": "emp_001",
+      "customer_id": "cust_101",
+      "customer_name": "Rapat PT Klar",
+      "date": "2026-02-24",
+      "time": "09:30:15",
+      "items": [
+        {
+          "product_id": "prod_001",
+          "product_name": "Espresso Single Shot",
+          "qty": 5,
+          "unit_price_idr": 25000,
+          "discount_idr": 0,
+          "subtotal_idr": 125000
+        },
+        {
+          "product_id": "prod_002",
+          "product_name": "Cappuccino",
+          "qty": 2,
+          "unit_price_idr": 35000,
+          "discount_idr": 5000,
+          "subtotal_idr": 65000
+        }
+      ],
+      "subtotal_idr": 190000,
+      "tax_idr": 19000,
+      "total_idr": 209000,
+      "payment_method": "cash",
+      "loyalty_points_earned": 209,
+      "loyalty_points_redeemed": 0,
+      "notes": "Klien meeting"
+    },
+    {
+      "transaction_id": "txn_20260224_002",
+      "store_id": "store_001",
+      "employee_id": "emp_001",
+      "customer_id": "cust_102",
+      "customer_name": "Walk-in Customer",
+      "date": "2026-02-24",
+      "time": "11:45:22",
+      "items": [
+        {
+          "product_id": "prod_001",
+          "product_name": "Espresso Single Shot",
+          "qty": 1,
+          "unit_price_idr": 25000,
+          "discount_idr": 0,
+          "subtotal_idr": 25000
+        }
+      ],
+      "subtotal_idr": 25000,
+      "tax_idr": 2500,
+      "total_idr": 27500,
+      "payment_method": "card",
+      "loyalty_points_earned": 27,
+      "loyalty_points_redeemed": 0,
+      "notes": null
+    },
+    {
+      "transaction_id": "txn_20260224_003",
+      "store_id": "store_002",
+      "employee_id": "emp_003",
+      "customer_id": "cust_201",
+      "customer_name": "Fashion Influencer",
+      "date": "2026-02-24",
+      "time": "14:20:45",
+      "items": [
+        {
+          "product_id": "prod_003",
+          "product_name": "Cotton T-Shirt",
+          "qty": 3,
+          "unit_price_idr": 150000,
+          "discount_idr": 15000,
+          "subtotal_idr": 435000
+        },
+        {
+          "product_id": "prod_004",
+          "product_name": "Jeans Premium",
+          "qty": 1,
+          "unit_price_idr": 450000,
+          "discount_idr": 0,
+          "subtotal_idr": 450000
+        }
+      ],
+      "subtotal_idr": 885000,
+      "tax_idr": 88500,
+      "total_idr": 973500,
+      "payment_method": "card",
+      "loyalty_points_earned": 973,
+      "loyalty_points_redeemed": 100,
+      "notes": "Bulk order for resale"
+    },
+    {
+      "transaction_id": "txn_20260223_001",
+      "store_id": "store_001",
+      "employee_id": "emp_002",
+      "customer_id": "cust_103",
+      "customer_name": "Regular Daily Customer",
+      "date": "2026-02-23",
+      "time": "08:15:30",
+      "items": [
+        {
+          "product_id": "prod_002",
+          "product_name": "Cappuccino",
+          "qty": 1,
+          "unit_price_idr": 35000,
+          "discount_idr": 0,
+          "subtotal_idr": 35000
+        }
+      ],
+      "subtotal_idr": 35000,
+      "tax_idr": 3500,
+      "total_idr": 38500,
+      "payment_method": "e-wallet",
+      "loyalty_points_earned": 38,
+      "loyalty_points_redeemed": 0,
+      "notes": null
+    },
+    {
+      "transaction_id": "txn_20260224_004",
+      "store_id": "store_003",
+      "employee_id": "emp_004",
+      "customer_id": "cust_301",
+      "customer_name": "Keluarga Besar",
+      "date": "2026-02-24",
+      "time": "12:30:15",
+      "items": [
+        {
+          "product_id": "prod_005",
+          "product_name": "Nasi Padang Spesial",
+          "qty": 4,
+          "unit_price_idr": 45000,
+          "discount_idr": 10000,
+          "subtotal_idr": 170000
+        },
+        {
+          "product_id": "prod_006",
+          "product_name": "Rendang Daging",
+          "qty": 2,
+          "unit_price_idr": 55000,
+          "discount_idr": 0,
+          "subtotal_idr": 110000
+        },
+        {
+          "product_id": "prod_007",
+          "product_name": "Es Cendol",
+          "qty": 4,
+          "unit_price_idr": 18000,
+          "discount_idr": 0,
+          "subtotal_idr": 72000
+        }
+      ],
+      "subtotal_idr": 352000,
+      "tax_idr": 35200,
+      "total_idr": 387200,
+      "payment_method": "cash",
+      "loyalty_points_earned": 387,
+      "loyalty_points_redeemed": 0,
+      "notes": "Group dining"
+    },
+    {
+      "transaction_id": "txn_20260224_005",
+      "store_id": "store_003",
+      "employee_id": "emp_005",
+      "customer_id": "cust_302",
+      "customer_name": "Office Lunch Group",
+      "date": "2026-02-24",
+      "time": "12:45:30",
+      "items": [
+        {
+          "product_id": "prod_005",
+          "product_name": "Nasi Padang Spesial",
+          "qty": 5,
+          "unit_price_idr": 45000,
+          "discount_idr": 0,
+          "subtotal_idr": 225000
+        },
+        {
+          "product_id": "prod_007",
+          "product_name": "Es Cendol",
+          "qty": 5,
+          "unit_price_idr": 18000,
+          "discount_idr": 5000,
+          "subtotal_idr": 85000
+        }
+      ],
+      "subtotal_idr": 310000,
+      "tax_idr": 31000,
+      "total_idr": 341000,
+      "payment_method": "e-wallet",
+      "loyalty_points_earned": 341,
+      "loyalty_points_redeemed": 0,
+      "notes": "Corporate order"
+    },
+    {
+      "transaction_id": "txn_20260225_001",
+      "store_id": "store_003",
+      "employee_id": "emp_004",
+      "customer_id": "cust_303",
+      "customer_name": "Breakfast Regular",
+      "date": "2026-02-25",
+      "time": "07:45:00",
+      "items": [
+        {
+          "product_id": "prod_005",
+          "product_name": "Nasi Padang Spesial",
+          "qty": 2,
+          "unit_price_idr": 45000,
+          "discount_idr": 0,
+          "subtotal_idr": 90000
+        },
+        {
+          "product_id": "prod_007",
+          "product_name": "Es Cendol",
+          "qty": 2,
+          "unit_price_idr": 18000,
+          "discount_idr": 0,
+          "subtotal_idr": 36000
+        }
+      ],
+      "subtotal_idr": 126000,
+      "tax_idr": 12600,
+      "total_idr": 138600,
+      "payment_method": "cash",
+      "loyalty_points_earned": 138,
+      "loyalty_points_redeemed": 0,
+      "notes": null
+    },
+    {
+      "transaction_id": "txn_20260225_002",
+      "store_id": "store_003",
+      "employee_id": "emp_005",
+      "customer_id": "cust_304",
+      "customer_name": "Lunch Meeting",
+      "date": "2026-02-25",
+      "time": "12:00:00",
+      "items": [
+        {
+          "product_id": "prod_006",
+          "product_name": "Rendang Daging",
+          "qty": 3,
+          "unit_price_idr": 55000,
+          "discount_idr": 5000,
+          "subtotal_idr": 160000
+        },
+        {
+          "product_id": "prod_007",
+          "product_name": "Es Cendol",
+          "qty": 3,
+          "unit_price_idr": 18000,
+          "discount_idr": 0,
+          "subtotal_idr": 54000
+        }
+      ],
+      "subtotal_idr": 214000,
+      "tax_idr": 21400,
+      "total_idr": 235400,
+      "payment_method": "card",
+      "loyalty_points_earned": 235,
+      "loyalty_points_redeemed": 0,
+      "notes": "Office meeting"
+    },
+    {
+      "transaction_id": "txn_20260225_003",
+      "store_id": "store_003",
+      "employee_id": "emp_004",
+      "customer_id": "cust_305",
+      "customer_name": "Dinner Family",
+      "date": "2026-02-25",
+      "time": "18:30:00",
+      "items": [
+        {
+          "product_id": "prod_005",
+          "product_name": "Nasi Padang Spesial",
+          "qty": 3,
+          "unit_price_idr": 45000,
+          "discount_idr": 0,
+          "subtotal_idr": 135000
+        },
+        {
+          "product_id": "prod_006",
+          "product_name": "Rendang Daging",
+          "qty": 2,
+          "unit_price_idr": 55000,
+          "discount_idr": 0,
+          "subtotal_idr": 110000
+        }
+      ],
+      "subtotal_idr": 245000,
+      "tax_idr": 24500,
+      "total_idr": 269500,
+      "payment_method": "cash",
+      "loyalty_points_earned": 269,
+      "loyalty_points_redeemed": 0,
+      "notes": null
+    }
+  ],
+  "daily_summary": [
+    {
+      "store_id": "store_001",
+      "date": "2026-02-24",
+      "total_transactions": 2,
+      "total_revenue_idr": 236500,
+      "total_items_sold": 8,
+      "total_customers": 2,
+      "new_customers": 1,
+      "repeat_customers": 1,
+      "avg_transaction_value_idr": 118250,
+      "top_product": "Espresso Single Shot",
+      "payment_methods": {
+        "cash": 209000,
+        "card": 27500
+      }
+    },
+    {
+      "store_id": "store_002",
+      "date": "2026-02-24",
+      "total_transactions": 1,
+      "total_revenue_idr": 973500,
+      "total_items_sold": 4,
+      "total_customers": 1,
+      "new_customers": 0,
+      "repeat_customers": 1,
+      "avg_transaction_value_idr": 973500,
+      "top_product": "Jeans Premium",
+      "payment_methods": {
+        "card": 973500
+      }
+    },
+    {
+      "store_id": "store_003",
+      "date": "2026-02-24",
+      "total_transactions": 2,
+      "total_revenue_idr": 728200,
+      "total_items_sold": 20,
+      "total_customers": 2,
+      "new_customers": 2,
+      "repeat_customers": 0,
+      "avg_transaction_value_idr": 364100,
+      "top_product": "Nasi Padang Spesial",
+      "payment_methods": {
+        "cash": 387200,
+        "e-wallet": 341000
+      }
+    },
+    {
+      "store_id": "store_003",
+      "date": "2026-02-25",
+      "total_transactions": 3,
+      "total_revenue_idr": 643500,
+      "total_items_sold": 15,
+      "total_customers": 3,
+      "new_customers": 3,
+      "repeat_customers": 0,
+      "avg_transaction_value_idr": 214500,
+      "top_product": "Rendang Daging",
+      "payment_methods": {
+        "cash": 408100,
+        "card": 235400
+      }
+    }
+  ]
+}
