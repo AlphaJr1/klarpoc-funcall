@@ -3,7 +3,7 @@ import os
 BRAND_STORE_MAP = {
     "Kopi_Brand_A": "store_001",
     "Fashion_Brand_B": "store_002",
-    "Electronics_Brand_C": "store_003",
+    "Restoran_Brand_C": "store_003",
 }
 
 ESCALATION_THRESHOLD = 80

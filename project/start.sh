@@ -14,8 +14,10 @@ rotate_log() {
     local log_file=$1
     if [ -f "$log_file" ]; then
         local timestamp=$(date +%Y%m%d_%H%M%S)
-        mv "$log_file" "${log_file}_bak_${timestamp}"
-        echo "Rotated log: $log_file -> ${log_file}_bak_${timestamp}"
+        local filename=$(basename "$log_file")
+        mkdir -p "$LOG_DIR/backup"
+        mv "$log_file" "$LOG_DIR/backup/${filename}_bak_${timestamp}"
+        echo "Rotated log: $log_file -> backup/${filename}_bak_${timestamp}"
     fi
 }
 

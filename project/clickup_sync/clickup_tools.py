@@ -52,6 +52,7 @@ def update_task(
     ai_response: str,
     confidence_score: int,
     resolution_status: str,
+    execution_trace: dict | None = None,
 ) -> dict:
     data = _load()
     for task in data["tasks"]:
@@ -61,6 +62,8 @@ def update_task(
             task["custom_fields"]["AI Confidence Score"] = confidence_score
             task["custom_fields"]["Resolution Status"] = resolution_status
             task.setdefault("comments", [])
+            if execution_trace:
+                task["execution_trace"] = execution_trace
             _save(data)
             return task
     raise ValueError(f"Task '{task_id}' tidak ditemukan.")

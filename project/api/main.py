@@ -1,7 +1,6 @@
 import sys
 import os
 
-# Tambahkan project root ke sys.path agar import package bisa berjalan
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
@@ -9,12 +8,13 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 
 import json
 import asyncio
+import concurrent.futures
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from router import route
+from router import route_stream
 from clickup_sync import get_open_tasks, get_all_tasks, get_task_by_id, create_task
 
 app = FastAPI(title="State Machine Router API")
@@ -53,6 +53,25 @@ def get_tasks():
     return {"tasks": get_all_tasks()}
 
 
+@app.post("/tasks/reset")
+def reset_tasks():
+    from clickup_sync.clickup_tools import _load, _save
+    data = _load()
+    count = 0
+    for task in data["tasks"]:
+        if task.get("parent_task_id") or task["task_id"].startswith("esc_"):
+            continue
+        task["status"] = "open"
+        task["ai_response"] = None
+        task.pop("execution_trace", None)
+        task["custom_fields"]["AI Confidence Score"] = None
+        task["custom_fields"]["Resolution Status"] = None
+        task["comments"] = []
+        count += 1
+    _save(data)
+    return {"reset": count}
+
+
 @app.get("/tasks/open")
 def get_open():
     return {"tasks": get_open_tasks()}
@@ -67,36 +86,30 @@ def get_task(task_id: str):
 
 
 @app.post("/tasks/{task_id}/run")
-async def run_task(task_id: str):
+async def run_task(task_id: str, force: bool = False):
     task = get_task_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    try:
-        result = route(task)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
     async def event_stream():
-        yield f"data: {json.dumps({'event': 'state_detected', 'state': result.get('state', 'UNKNOWN'), 'matched_keyword': result.get('matched_keyword', '')})}\n\n"
-        await asyncio.sleep(0.8)
+        loop = asyncio.get_event_loop()
+        queue: asyncio.Queue = asyncio.Queue()
 
-        for tc in result.get("tool_calls", []):
-            yield f"data: {json.dumps({'event': 'tool_call', 'tool': tc['tool'], 'input': tc.get('input', {})})}\n\n"
-            await asyncio.sleep(1.0)
-            yield f"data: {json.dumps({'event': 'tool_result', 'tool': tc['tool'], 'result': tc.get('result', {})})}\n\n"
-            await asyncio.sleep(0.5)
+        def run_generator():
+            try:
+                for event in route_stream(task, force=force):
+                    loop.call_soon_threadsafe(queue.put_nowait, event)
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)
 
-        yield f"data: {json.dumps({'event': 'confidence', 'score': result.get('confidence_score', 0)})}\n\n"
-        await asyncio.sleep(0.5)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        loop.run_in_executor(executor, run_generator)
 
-        done = {
-            "event": "done",
-            "resolution": result.get("resolution_status", ""),
-            "response": result.get("ai_response", ""),
-            "escalation_task": result.get("escalation_task"),
-        }
-        yield f"data: {json.dumps(done)}\n\n"
+        while True:
+            event = await queue.get()
+            if event is None:
+                break
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
