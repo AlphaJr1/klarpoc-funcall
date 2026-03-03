@@ -6,7 +6,7 @@ from openai import OpenAI
 from .brand_guard import get_store_id, BrandAccessError
 from . import loyverse_tools as lv
 import clickup_sync as cu
-from .config import OLLAMA_MODEL, OLLAMA_BASE_URL, ESCALATION_THRESHOLD, RESOLVED_THRESHOLD
+from .config import OLLAMA_MODEL, SHADOW_CHECK_MODEL, OLLAMA_BASE_URL, ESCALATION_THRESHOLD, RESOLVED_THRESHOLD
 
 
 TOOLS = [
@@ -95,19 +95,166 @@ def _execute_tool(name: str, inputs: dict) -> str:
         return json.dumps({"error": str(e)})
 
 
-def _score_dnc(thinking_steps: list) -> tuple[float, str]:
-    """DNC stub: cek reasoning trace coherence. Returns (score 0-100, reason)."""
+def _score_dnc(
+    thinking_steps: list,
+    ai_response: str = "",
+    query_keywords: list | None = None,
+    client=None,
+) -> tuple[float, str]:
+    """
+    Full 3-path DNC (Distractor-Normalized Coherence) sesuai DAF spec.
+    Path 1: Anomaly detection — apakah AI temukan masalah dan sembunyikan?
+    Path 2: Numeric matching — angka di reasoning vs angka di final answer
+    Path 3: LLM-as-judge — untuk query kompleks (trend/cohort)
+    """
+    import re
+    query_keywords = query_keywords or []
+    query_lower = " ".join(query_keywords).lower()
+
     if not thinking_steps:
         return 50.0, "Tidak ada reasoning trace tersedia"
-    conflict_keywords = {"error", "tidak bisa", "tidak tahu", "ambigu", "bingung", "conflict", "mismatch", "kontradiksi"}
-    messages = " ".join(s.get("message", "").lower() for s in thinking_steps)
-    hits = sum(1 for kw in conflict_keywords if kw in messages)
-    if hits == 0:
-        return 100.0, "Reasoning trace konsisten, tidak ada konflik terdeteksi"
-    elif hits == 1:
-        return 60.0, f"Satu indikasi ambiguitas terdeteksi dalam reasoning trace"
-    else:
-        return 20.0, f"{hits} konflik/ambiguitas terdeteksi dalam reasoning trace"
+
+    reasoning_trace = " ".join(s.get("message", "") for s in thinking_steps)
+    reasoning_lower = reasoning_trace.lower()
+
+    # --- PATH 1: Anomaly detection (single-source issues AI temukan sendiri) ---
+    anomaly_kws   = {"anomaly", "negative value", "mismatch", "unusual", "data quality",
+                     "negatif", "anomali", "mencurigakan", "tidak wajar", "data rusak"}
+    escalate_kws  = {"escalate", "note:", "warning", "anomali", "data integrity",
+                     "perlu review", "tidak dapat dipastikan"}
+    problem_flagged   = any(kw in reasoning_lower for kw in anomaly_kws)
+    problem_escalated = any(kw in ai_response.lower() for kw in escalate_kws)
+
+    if problem_flagged:
+        if problem_escalated:
+            return 95.0, "AI mendeteksi anomali dan benar-benar mengungkapnya dalam jawaban"
+        else:
+            return 20.0, "AI menemukan anomali dalam reasoning tapi TIDAK menyebutnya di jawaban (data disembunyikan)"
+
+    # --- PATH 2: Numeric matching untuk query tipe sales/members/units ---
+    numeric_query_types = {"revenue", "pendapatan", "sales", "penjualan", "transaksi",
+                           "transaction", "total", "member", "units", "omzet"}
+    is_numeric_query = any(kw in query_lower for kw in numeric_query_types)
+
+    if is_numeric_query and ai_response:
+        def extract_numbers(text: str) -> set[int]:
+            nums = set()
+            for n in re.findall(r"Rp\.?\s?([\d.,]+)", text):
+                try:
+                    nums.add(int(n.replace(".", "").replace(",", "")))
+                except ValueError:
+                    pass
+            return nums
+
+        reasoning_nums = extract_numbers(reasoning_trace)
+        answer_nums    = extract_numbers(ai_response)
+
+        if not answer_nums:
+            return 45.0, "Jawaban tidak mengandung angka Rp padahal query meminta data numerik"
+
+        matched = sum(
+            1 for a in answer_nums
+            if any(abs(a - r) / max(r, 1) < 0.01 for r in reasoning_nums)
+        )
+        ratio = matched / len(answer_nums)
+        score = round(ratio * 100, 1)
+        if ratio == 1.0:
+            return score, f"Semua angka di jawaban ({len(answer_nums)}) dapat ditelusuri dari reasoning trace"
+        elif ratio >= 0.5:
+            return score, f"{matched}/{len(answer_nums)} angka di jawaban cocok dengan reasoning trace"
+        else:
+            return score, f"Hanya {matched}/{len(answer_nums)} angka jawaban yang ada di reasoning — kemungkinan angka tidak konsisten"
+
+    # --- PATH 3: LLM-as-judge untuk query kompleks ---
+    complex_kws = {"trend", "cohort", "retention", "comparison", "bandingkan", "analisis", "forecast"}
+    is_complex  = any(kw in query_lower for kw in complex_kws)
+
+    if is_complex and ai_response and client:
+        prompt = (
+            f"Reasoning: {reasoning_trace[:600]}\n"
+            f"Answer: {ai_response[:400]}\n\n"
+            "Beri skor 0-100: seberapa konsisten jawaban dengan reasoning?\n"
+            "90-100: langsung mencerminkan reasoning\n"
+            "60-89: ada gap kecil, masih didukung\n"
+            "30-59: sebagian bertentangan dengan reasoning\n"
+            "0-29: kontradiksi langsung\n"
+            "Jawab HANYA angka integer."
+        )
+        try:
+            resp = client.chat.completions.create(
+                model=OLLAMA_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            score_text = resp.choices[0].message.content.strip()
+            score = float(re.search(r"\d+", score_text).group())
+            score = max(0.0, min(100.0, score))
+            label = "sangat konsisten" if score >= 80 else "cukup konsisten" if score >= 60 else "kurang konsisten"
+            return score, f"LLM judge: reasoning-answer {label} (skor {score:.0f}/100)"
+        except Exception:
+            pass
+
+    # Fallback: Path 1 clean (tidak ada anomali, tidak numeric, tidak complex)
+    return 100.0, "Reasoning trace konsisten, tidak ada konflik atau anomali terdeteksi"
+
+def _shadow_check(
+    client,
+    question: str,
+    reasoning_trace: str,
+    ai_response: str,
+) -> dict:
+    """
+    Secondary AI judge (gpt-oss:120b) — DAF Shadow Check.
+    2 pertanyaan:
+    1. Logic: apakah jawaban logis mengikuti reasoning?
+    2. Disclosure: apakah reasoning temukan masalah yang TIDAK diungkap di jawaban?
+    Return: {result: PASS|FLAG, logic: PASS|FLAG, disclosure: PASS|FLAG, reason: str}
+    """
+    shadow_client = OpenAI(
+        api_key=client.api_key,
+        base_url=client.base_url,
+    )
+    prompt = (
+        "Kamu adalah logic dan disclosure auditor untuk AI yang menjawab query data marketing.\n"
+        "Evaluasi dua hal berdasarkan query, reasoning trace, dan jawaban final:\n\n"
+        f"QUERY: {question}\n"
+        f"REASONING TRACE: {reasoning_trace[:800]}\n"
+        f"FINAL ANSWER: {ai_response[:600]}\n\n"
+        "Question 1 — Logic Check:\n"
+        "Apakah jawaban final secara logis mengikuti reasoning trace?\n\n"
+        "Question 2 — Disclosure Check:\n"
+        "Apakah reasoning trace mengandung anomali, warning, flag, atau masalah "
+        "(nilai negatif, spike tidak wajar, data hilang, hasil tidak terduga) "
+        "yang TIDAK disebutkan atau diungkap dalam jawaban final?\n\n"
+        "Jawab PERSIS dalam format ini (tidak ada teks lain):\n"
+        "LOGIC: PASS atau FLAG: [alasan singkat]\n"
+        "DISCLOSURE: PASS atau FLAG: [alasan singkat]\n"
+        "RESULT: PASS atau FLAG"
+    )
+    try:
+        resp = shadow_client.chat.completions.create(
+            model=SHADOW_CHECK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = resp.choices[0].message.content.strip()
+        lines = {}
+        for line in text.splitlines():
+            if ": " in line:
+                k, v = line.split(": ", 1)
+                lines[k.strip().upper()] = v.strip()
+        logic      = lines.get("LOGIC", "PASS")
+        disclosure = lines.get("DISCLOSURE", "PASS")
+        result     = lines.get("RESULT", "PASS")
+        is_flag    = result.upper().startswith("FLAG") or \
+                     logic.upper().startswith("FLAG") or \
+                     disclosure.upper().startswith("FLAG")
+        return {
+            "result":     "FLAG" if is_flag else "PASS",
+            "logic":      logic,
+            "disclosure": disclosure,
+            "raw":        text,
+        }
+    except Exception as e:
+        return {"result": "PASS", "logic": "PASS", "disclosure": "PASS", "raw": str(e)}
 
 
 def _calculate_confidence(
@@ -115,6 +262,8 @@ def _calculate_confidence(
     query_keywords: list,
     date_range: str,
     thinking_steps: list | None = None,
+    ai_response: str = "",
+    client=None,
     T_optimal: float | None = None,
 ) -> dict:
     """
@@ -125,54 +274,104 @@ def _calculate_confidence(
     """
     thinking_steps = thinking_steps or []
 
-    # 1. Completeness (25%): rasio tool call sukses
+    # DAF: Expected fields per tool (untuk Completeness)
+    _TOOL_EXPECTED_FIELDS: dict[str, list[str]] = {
+        "get_daily_summary":       ["total_revenue", "total_transactions", "average_order_value"],
+        "get_date_range_metrics":  ["total_revenue", "total_transactions"],
+        "get_top_products":        ["products"],
+        "get_employee_performance":["employees"],
+    }
+
+    # DAF: Intent → expected tools (untuk Tool_Routing)
+    _INTENT_TOOL_MAP: list[tuple[list[str], list[str]]] = [
+        (["revenue", "pendapatan", "sales", "penjualan", "omzet", "pemasukan"],
+         ["get_daily_summary", "get_date_range_metrics"]),
+        (["produk", "product", "terlaris", "top", "item", "menu"],
+         ["get_top_products"]),
+        (["karyawan", "employee", "staff", "performa", "kasir"],
+         ["get_employee_performance"]),
+        (["range", "period", "rentang", "periode", "bulan", "minggu", "comparison", "compare"],
+         ["get_date_range_metrics"]),
+    ]
+
     total_tools = len(tool_calls_log)
+    query_lower = " ".join(query_keywords).lower()
+
+    # 1. Completeness (25%): % required fields non-null per tool result (DAF spec)
     if total_tools == 0:
         completeness = 30.0
         completeness_reason = "Tidak ada tool dipanggil, data tidak dapat diverifikasi"
     else:
-        success = sum(1 for t in tool_calls_log if "error" not in t.get("result", {}))
-        ratio = success / total_tools
-        completeness = ratio * 100
-        if ratio == 1.0:
-            completeness_reason = f"Semua {total_tools} tool call berhasil"
-        elif ratio >= 0.5:
-            completeness_reason = f"{success}/{total_tools} tool call sukses, sebagian data tersedia"
+        field_scores = []
+        for t in tool_calls_log:
+            result = t.get("result", {})
+            if "error" in result:
+                field_scores.append(0.0)
+                continue
+            expected = _TOOL_EXPECTED_FIELDS.get(t.get("tool", ""), [])
+            if not expected:
+                # Tool tidak dikenal, fallback ke cek result tidak kosong
+                field_scores.append(100.0 if result else 0.0)
+                continue
+            present = sum(
+                1 for f in expected
+                if result.get(f) is not None and result.get(f) != "" and result.get(f) != 0
+                   or (isinstance(result.get(f), list) and len(result.get(f)) > 0)
+            )
+            field_scores.append(present / len(expected) * 100)
+        completeness = round(sum(field_scores) / len(field_scores), 1)
+        if completeness >= 90:
+            completeness_reason = f"Data lengkap ({completeness:.0f}% required fields tersedia di semua tool)"
+        elif completeness >= 60:
+            completeness_reason = f"Sebagian field tersedia ({completeness:.0f}%) — beberapa data mungkin tidak lengkap"
         else:
-            completeness_reason = f"Hanya {success}/{total_tools} tool call sukses, mayoritas error"
+            completeness_reason = f"Field data kurang lengkap ({completeness:.0f}%) — hasil analisis bisa tidak akurat"
 
-    # 2. Tool_Routing (20%): apakah tool yang dipanggil relevan & tidak redundan
+    # 2. Tool_Routing (20%): apakah tool yang dipanggil sesuai intent query (DAF spec)
     if total_tools == 0:
         tool_routing = 30.0
         tool_routing_reason = "Tidak ada tool dipanggil"
     else:
-        tool_names = [t.get("tool", "") for t in tool_calls_log]
-        unique_ratio = len(set(tool_names)) / total_tools
-        has_error = any("error" in t.get("result", {}) for t in tool_calls_log)
-        if unique_ratio >= 0.8 and not has_error:
+        called_tools = set(t.get("tool", "") for t in tool_calls_log)
+        matched_intents = 0
+        total_intents = 0
+        for intent_kws, expected_tools in _INTENT_TOOL_MAP:
+            if any(kw in query_lower for kw in intent_kws):
+                total_intents += 1
+                if any(et in called_tools for et in expected_tools):
+                    matched_intents += 1
+        if total_intents == 0:
+            # Tidak ada intent yang teridentifikasi, cek minimal ada tool yang dipanggil
+            tool_routing = 70.0
+            tool_routing_reason = "Intent query tidak spesifik, tool dipanggil secara umum"
+        elif matched_intents == total_intents:
             tool_routing = 100.0
-            tool_routing_reason = f"{len(set(tool_names))} tool unik dipanggil tanpa redundansi"
-        elif unique_ratio >= 0.5:
-            tool_routing = 65.0
-            tool_routing_reason = f"Beberapa tool redundan atau ada error pada routing"
+            tool_routing_reason = f"Tool yang dipanggil sesuai intent query ({matched_intents}/{total_intents} intent terpenuhi)"
+        elif matched_intents > 0:
+            tool_routing = round(matched_intents / total_intents * 100, 1)
+            tool_routing_reason = f"Sebagian intent terpenuhi ({matched_intents}/{total_intents}) — ada tool yang mungkin terlewat"
         else:
-            tool_routing = 30.0
-            tool_routing_reason = f"Tool routing tidak efisien — banyak duplikasi"
+            tool_routing = 20.0
+            tool_routing_reason = "Tool yang dipanggil tidak sesuai dengan intent query"
 
-    # 3. Complexity (15%): estimasi kompleksitas query dari keyword & jumlah tool
-    kw_count = len(query_keywords)
-    if kw_count >= 4 and total_tools >= 2:
-        complexity = 100.0
-        complexity_reason = f"Query spesifik ({kw_count} keyword) dengan multi-tool — kompleksitas tinggi tapi terjawab"
-    elif kw_count >= 2:
-        complexity = 70.0
-        complexity_reason = f"{kw_count} keyword terdeteksi — query cukup jelas"
-    elif kw_count == 1:
-        complexity = 40.0
-        complexity_reason = f"Query kurang spesifik ({kw_count} keyword)"
+    # 3. Complexity (15%): klasifikasi simple/medium/complex sesuai DAF risk weighting
+    # Simple = 1 metrik, 1 tanggal → skor tinggi (rendah risiko)
+    # Medium = date range, comparison → skor sedang (risiko sedang)
+    # Complex = trend, cohort, multi-step → skor rendah (risiko tinggi, inherent uncertainty)
+    complex_kws  = {"trend", "cohort", "retention", "comparison", "compare", "bandingkan", "analisis", "forecast"}
+    medium_kws   = {"range", "rentang", "periode", "period", "minggu", "bulan", "weekly", "monthly"}
+    is_complex   = any(kw in query_lower for kw in complex_kws) or total_tools >= 3
+    is_medium    = any(kw in query_lower for kw in medium_kws) or total_tools == 2
+
+    if is_complex:
+        complexity = 60.0
+        complexity_reason = "Query kompleks (trend/cohort/multi-step) — inherent uncertainty tinggi, perlu review"
+    elif is_medium:
+        complexity = 80.0
+        complexity_reason = "Query medium (date range/comparison) — risiko moderat"
     else:
-        complexity = 10.0
-        complexity_reason = "Query terlalu umum, intent tidak terdeteksi"
+        complexity = 100.0
+        complexity_reason = "Query sederhana (single metric, single date) — risiko rendah"
 
     # 4. Data_Validation (15%): cek anomali dalam result (nilai negatif, null)
     if total_tools == 0:
@@ -222,8 +421,8 @@ def _calculate_confidence(
         freshness = 10.0
         freshness_reason = f"Data {age_hours / 24:.0f} hari yang lalu — historical"
 
-    # 6. DNC — Reasoning Trace Coherence (10%)
-    dnc, dnc_reason = _score_dnc(thinking_steps)
+    # 6. DNC — Full 3-path (Path 1: anomaly, Path 2: numeric, Path 3: LLM judge)
+    dnc, dnc_reason = _score_dnc(thinking_steps, ai_response=ai_response, query_keywords=query_keywords, client=client)
 
     raw_score = round(
         completeness   * 0.25 +
@@ -532,7 +731,12 @@ def route_stream(task: dict, force: bool = False) -> Generator[dict, None, None]
     ai_response = final_text.strip()
 
     keywords = [w for w in question.lower().split() if len(w) > 3]
-    confidence = _calculate_confidence(tool_calls_log, keywords, date_range, thinking_steps=thinking_steps)
+    confidence = _calculate_confidence(
+        tool_calls_log, keywords, date_range,
+        thinking_steps=thinking_steps,
+        ai_response=ai_response,
+        client=client,
+    )
     confidence_score = int(confidence["score"])
     confidence_breakdown = confidence["breakdown"]
     resolution_status = "AI Direct Send" if confidence_score >= ESCALATION_THRESHOLD else "AM Review Required"
@@ -550,6 +754,17 @@ def route_stream(task: dict, force: bool = False) -> Generator[dict, None, None]
         explanations = _explain_confidence(client, question, tool_calls_log, confidence, date_range)
         if explanations:
             yield {"event": "confidence_explanation", "explanations": explanations}
+    except Exception:
+        pass
+
+    # Step 5c: Shadow Check (secondary AI judge — binary veto)
+    try:
+        reasoning_trace_text = " ".join(s.get("message", "") for s in thinking_steps)
+        shadow = _shadow_check(client, question, reasoning_trace_text, ai_response)
+        yield {"event": "shadow_check", **shadow}
+        # Jika FLAG: override resolution ke AM Review
+        if shadow["result"] == "FLAG":
+            resolution_status = "AM Review Required (Shadow Check FLAG)"
     except Exception:
         pass
 

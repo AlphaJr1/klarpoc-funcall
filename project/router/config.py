@@ -10,6 +10,7 @@ ESCALATION_THRESHOLD = 80
 RESOLVED_THRESHOLD = 95
 
 OLLAMA_MODEL = "minimax-m2.5:cloud"
+SHADOW_CHECK_MODEL = "gpt-oss:120b"
 OLLAMA_BASE_URL = "https://ollama.com"
 
 # Path absolut relatif ke root project (parent dari folder ini)
