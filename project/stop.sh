@@ -1,51 +1,61 @@
 #!/usr/bin/env bash
 
-# Script Description: Shutdown the frontend and backend applications gracefully
+# Stop all or specific services
+# Usage:
+#   ./stop.sh           -> stop semua
+#   ./stop.sh python    -> stop Python backend saja
+#   ./stop.sh go        -> stop Go backend saja
+#   ./stop.sh frontend  -> stop Frontend saja
 
 PROJECT_DIR=$(dirname "$(realpath "$0")")
 LOG_DIR="$PROJECT_DIR/logs"
 
-echo "=============== STOPPING SERVICES ==============="
+TARGET="${1:-all}"
 
-# Stop Backend System
-if [ -f "$LOG_DIR/backend.pid" ]; then
-    PID=$(cat "$LOG_DIR/backend.pid")
-    if kill -0 $PID 2>/dev/null; then
-        echo "Stopping Backend (FastAPI) [PID: $PID]..."
-        kill $PID
-        rm "$LOG_DIR/backend.pid"
-        echo "Backend stopped."
+stop_service() {
+    local name=$1
+    local pid_file=$2
+    local port=$3
+    local fallback_pattern=$4
+
+    echo "Stopping $name..."
+    if [ -f "$pid_file" ]; then
+        PID=$(cat "$pid_file")
+        if kill -0 $PID 2>/dev/null; then
+            kill $PID && echo "$name stopped [PID: $PID]."
+        else
+            echo "$name not running."
+        fi
+        rm -f "$pid_file"
     else
-        echo "Backend is not running. PID file found and removed."
-        rm "$LOG_DIR/backend.pid"
+        pkill -f "$fallback_pattern" && echo "$name killed." || echo "No $name process found."
     fi
-else
-    echo "No Backend PID found. Looking manually..."
-    pkill -f "uvicorn api.main" && echo "Killed backend processes." || echo "No matching backend processes found."
-fi
 
-# Pastikan port 8000 benar-benar bebas
-lsof -t -i:8000 | xargs kill -9 2>/dev/null && echo "Port 8000 cleared." || true
-
-# Stop Frontend System
-if [ -f "$LOG_DIR/frontend.pid" ]; then
-    PID=$(cat "$LOG_DIR/frontend.pid")
-    if kill -0 $PID 2>/dev/null; then
-        echo "Stopping Frontend (Next.js) [PID: $PID]..."
-        kill $PID
-        rm "$LOG_DIR/frontend.pid"
-        echo "Frontend stopped."
-    else
-        echo "Frontend is not running. PID file found and removed."
-        rm "$LOG_DIR/frontend.pid"
+    if [ -n "$port" ]; then
+        lsof -t -i:$port | xargs kill -9 2>/dev/null && echo "Port $port cleared." || true
     fi
-else
-    echo "No Frontend PID found. Looking manually..."
-    pkill -f "next dev" && echo "Killed frontend/next processes." || echo "No matching frontend processes found."
-fi
+}
 
-# Bersihkan lock file Next.js
-rm -f "$PROJECT_DIR/ui/.next/dev/lock"
+echo "=============== STOPPING: $TARGET ==============="
+
+case "$TARGET" in
+    python)
+        stop_service "Python Backend" "$LOG_DIR/backend_py.pid" 8000 "uvicorn api.main"
+        ;;
+    go)
+        stop_service "Go Backend" "$LOG_DIR/backend_go.pid" 8080 "go-api/cmd/api/main.go"
+        ;;
+    frontend)
+        stop_service "Frontend" "$LOG_DIR/frontend.pid" "" "next dev"
+        rm -f "$PROJECT_DIR/ui/.next/dev/lock"
+        ;;
+    all|*)
+        stop_service "Python Backend" "$LOG_DIR/backend_py.pid" 8000 "uvicorn api.main"
+        stop_service "Go Backend" "$LOG_DIR/backend_go.pid" 8080 "go-api/cmd/api/main.go"
+        stop_service "Frontend" "$LOG_DIR/frontend.pid" "" "next dev"
+        rm -f "$PROJECT_DIR/ui/.next/dev/lock"
+        ;;
+esac
 
 echo "================================================="
-echo "All services stopped."
+echo "Done."

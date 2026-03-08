@@ -1,0 +1,57 @@
+states:
+  State 1:
+    label: Sales & Revenue
+    description: >
+      Query tentang revenue harian/periodik, jumlah transaksi, customer counts,
+      ringkasan penjualan, total omzet, pendapatan toko.
+    keywords:
+      - revenue
+      - pendapatan
+      - sales
+      - penjualan
+      - transaksi
+      - omzet
+      - pemasukan
+      - new customers
+    tools:
+      - get_daily_summary
+      - get_date_range_metrics
+
+  State 2:
+    label: Product Performance
+    description: >
+      Query tentang produk terlaris, performa karyawan, ranking produk,
+      inventory insights, metrik produk, employee ranking.
+    keywords:
+      - produk
+      - product
+      - terlaris
+      - top selling
+      - karyawan
+      - employee
+      - performa
+      - inventory
+    tools:
+      - get_top_products
+      - get_employee_performance
+      - get_store_info
+
+  State 3:
+    label: Project Management
+    description: >
+      Query tentang project progress, overdue tasks, workload tim, milestone,
+      deadline, task assignee. Data source adalah ClickUp, BUKAN Loyverse.
+    keywords:
+      - project
+      - task
+      - overdue
+      - deadline
+      - milestone
+      - assignee
+      - workload
+      - progress
+    tools:
+      - get_project_status
+      - get_overdue_tasks
+      - get_tasks_by_assignee
+    skip_brand_isolation: true

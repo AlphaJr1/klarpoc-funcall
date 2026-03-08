@@ -1,4 +1,4 @@
-from .config import BRAND_STORE_MAP
+from .brand_resolution import resolve_brand, get_brand_info, BRANDS
 
 
 class BrandAccessError(Exception):
@@ -6,15 +6,14 @@ class BrandAccessError(Exception):
 
 
 def get_store_id(brand_id: str) -> str:
-    if brand_id not in BRAND_STORE_MAP:
+    info = get_brand_info(brand_id)
+    if not info:
         raise BrandAccessError(f"Brand '{brand_id}' tidak ditemukan dalam sistem.")
-    return BRAND_STORE_MAP[brand_id]
+    return info["store_id"]
 
 
-def validate_brand_access(brand_id: str, store_id: str) -> bool:
-    expected = get_store_id(brand_id)
-    if expected != store_id:
-        raise BrandAccessError(
-            f"Akses ditolak: brand '{brand_id}' tidak memiliki akses ke store '{store_id}'."
-        )
-    return True
+def get_project_id(brand_id: str) -> str:
+    info = get_brand_info(brand_id)
+    if not info:
+        raise BrandAccessError(f"Brand '{brand_id}' tidak ditemukan dalam sistem.")
+    return info["project_id"]

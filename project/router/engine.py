@@ -1,464 +1,36 @@
 import json
+import logging
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from queue import Queue, Empty
 from typing import Generator
 from openai import OpenAI
+
 from .brand_guard import get_store_id, BrandAccessError
-from . import loyverse_tools as lv
-import clickup_sync as cu
-from .config import OLLAMA_MODEL, SHADOW_CHECK_MODEL, OLLAMA_BASE_URL, ESCALATION_THRESHOLD, RESOLVED_THRESHOLD
-
-
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_daily_summary",
-            "description": "Ambil ringkasan penjualan harian untuk satu toko pada tanggal tertentu.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "store_id": {"type": "string", "description": "ID toko Loyverse"},
-                    "date": {"type": "string", "description": "Tanggal format YYYY-MM-DD"},
-                },
-                "required": ["store_id", "date"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_date_range_metrics",
-            "description": "Ambil metrik agregat transaksi dalam rentang tanggal.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "store_id": {"type": "string"},
-                    "start_date": {"type": "string", "description": "YYYY-MM-DD"},
-                    "end_date": {"type": "string", "description": "YYYY-MM-DD"},
-                },
-                "required": ["store_id", "start_date", "end_date"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_top_products",
-            "description": "Ambil produk terlaris berdasarkan subtotal revenue pada tanggal tertentu.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "store_id": {"type": "string"},
-                    "date": {"type": "string", "description": "YYYY-MM-DD"},
-                    "limit": {"type": "integer", "default": 5},
-                },
-                "required": ["store_id", "date"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_employee_performance",
-            "description": "Ambil performa karyawan (jumlah transaksi & total revenue) pada tanggal tertentu.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "store_id": {"type": "string"},
-                    "date": {"type": "string", "description": "YYYY-MM-DD"},
-                },
-                "required": ["store_id", "date"],
-            },
-        },
-    },
-]
-
-TOOL_REGISTRY = {
-    "get_daily_summary": lv.get_daily_summary,
-    "get_date_range_metrics": lv.get_date_range_metrics,
-    "get_top_products": lv.get_top_products,
-    "get_employee_performance": lv.get_employee_performance,
-}
-
-
-def _execute_tool(name: str, inputs: dict) -> str:
-    fn = TOOL_REGISTRY.get(name)
-    if not fn:
-        return json.dumps({"error": f"Tool '{name}' tidak dikenal."})
-    try:
-        result = fn(**inputs)
-        if not result:
-            return json.dumps({"error": "Data tidak ditemukan."})
-        return json.dumps(result, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"error": str(e)})
-
-
-def _score_dnc(
-    thinking_steps: list,
-    ai_response: str = "",
-    query_keywords: list | None = None,
-    client=None,
-) -> tuple[float, str]:
-    """
-    Full 3-path DNC (Distractor-Normalized Coherence) sesuai DAF spec.
-    Path 1: Anomaly detection — apakah AI temukan masalah dan sembunyikan?
-    Path 2: Numeric matching — angka di reasoning vs angka di final answer
-    Path 3: LLM-as-judge — untuk query kompleks (trend/cohort)
-    """
-    import re
-    query_keywords = query_keywords or []
-    query_lower = " ".join(query_keywords).lower()
-
-    if not thinking_steps:
-        return 50.0, "Tidak ada reasoning trace tersedia"
-
-    reasoning_trace = " ".join(s.get("message", "") for s in thinking_steps)
-    reasoning_lower = reasoning_trace.lower()
-
-    # --- PATH 1: Anomaly detection (single-source issues AI temukan sendiri) ---
-    anomaly_kws   = {"anomaly", "negative value", "mismatch", "unusual", "data quality",
-                     "negatif", "anomali", "mencurigakan", "tidak wajar", "data rusak"}
-    escalate_kws  = {"escalate", "note:", "warning", "anomali", "data integrity",
-                     "perlu review", "tidak dapat dipastikan"}
-    problem_flagged   = any(kw in reasoning_lower for kw in anomaly_kws)
-    problem_escalated = any(kw in ai_response.lower() for kw in escalate_kws)
-
-    if problem_flagged:
-        if problem_escalated:
-            return 95.0, "AI mendeteksi anomali dan benar-benar mengungkapnya dalam jawaban"
-        else:
-            return 20.0, "AI menemukan anomali dalam reasoning tapi TIDAK menyebutnya di jawaban (data disembunyikan)"
-
-    # --- PATH 2: Numeric matching untuk query tipe sales/members/units ---
-    numeric_query_types = {"revenue", "pendapatan", "sales", "penjualan", "transaksi",
-                           "transaction", "total", "member", "units", "omzet"}
-    is_numeric_query = any(kw in query_lower for kw in numeric_query_types)
-
-    if is_numeric_query and ai_response:
-        def extract_numbers(text: str) -> set[int]:
-            nums = set()
-            for n in re.findall(r"Rp\.?\s?([\d.,]+)", text):
-                try:
-                    nums.add(int(n.replace(".", "").replace(",", "")))
-                except ValueError:
-                    pass
-            return nums
-
-        reasoning_nums = extract_numbers(reasoning_trace)
-        answer_nums    = extract_numbers(ai_response)
-
-        if not answer_nums:
-            return 45.0, "Jawaban tidak mengandung angka Rp padahal query meminta data numerik"
-
-        matched = sum(
-            1 for a in answer_nums
-            if any(abs(a - r) / max(r, 1) < 0.01 for r in reasoning_nums)
-        )
-        ratio = matched / len(answer_nums)
-        score = round(ratio * 100, 1)
-        if ratio == 1.0:
-            return score, f"Semua angka di jawaban ({len(answer_nums)}) dapat ditelusuri dari reasoning trace"
-        elif ratio >= 0.5:
-            return score, f"{matched}/{len(answer_nums)} angka di jawaban cocok dengan reasoning trace"
-        else:
-            return score, f"Hanya {matched}/{len(answer_nums)} angka jawaban yang ada di reasoning — kemungkinan angka tidak konsisten"
-
-    # --- PATH 3: LLM-as-judge untuk query kompleks ---
-    complex_kws = {"trend", "cohort", "retention", "comparison", "bandingkan", "analisis", "forecast"}
-    is_complex  = any(kw in query_lower for kw in complex_kws)
-
-    if is_complex and ai_response and client:
-        prompt = (
-            f"Reasoning: {reasoning_trace[:600]}\n"
-            f"Answer: {ai_response[:400]}\n\n"
-            "Beri skor 0-100: seberapa konsisten jawaban dengan reasoning?\n"
-            "90-100: langsung mencerminkan reasoning\n"
-            "60-89: ada gap kecil, masih didukung\n"
-            "30-59: sebagian bertentangan dengan reasoning\n"
-            "0-29: kontradiksi langsung\n"
-            "Jawab HANYA angka integer."
-        )
-        try:
-            resp = client.chat.completions.create(
-                model=OLLAMA_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            score_text = resp.choices[0].message.content.strip()
-            score = float(re.search(r"\d+", score_text).group())
-            score = max(0.0, min(100.0, score))
-            label = "sangat konsisten" if score >= 80 else "cukup konsisten" if score >= 60 else "kurang konsisten"
-            return score, f"LLM judge: reasoning-answer {label} (skor {score:.0f}/100)"
-        except Exception:
-            pass
-
-    # Fallback: Path 1 clean (tidak ada anomali, tidak numeric, tidak complex)
-    return 100.0, "Reasoning trace konsisten, tidak ada konflik atau anomali terdeteksi"
-
-def _shadow_check(
-    client,
-    question: str,
-    reasoning_trace: str,
-    ai_response: str,
-) -> dict:
-    """
-    Secondary AI judge (gpt-oss:120b) — DAF Shadow Check.
-    2 pertanyaan:
-    1. Logic: apakah jawaban logis mengikuti reasoning?
-    2. Disclosure: apakah reasoning temukan masalah yang TIDAK diungkap di jawaban?
-    Return: {result: PASS|FLAG, logic: PASS|FLAG, disclosure: PASS|FLAG, reason: str}
-    """
-    shadow_client = OpenAI(
-        api_key=client.api_key,
-        base_url=client.base_url,
+from .brand_resolution import resolve_brand
+try:
+    from clickup_sync.clickup_api import (
+        update_task as _cu_update,
+        add_comment as _cu_comment,
+        create_escalation_task as _cu_escalate,
+        mark_in_progress as _cu_inprogress,
     )
-    prompt = (
-        "Kamu adalah logic dan disclosure auditor untuk AI yang menjawab query data marketing.\n"
-        "Evaluasi dua hal berdasarkan query, reasoning trace, dan jawaban final:\n\n"
-        f"QUERY: {question}\n"
-        f"REASONING TRACE: {reasoning_trace[:800]}\n"
-        f"FINAL ANSWER: {ai_response[:600]}\n\n"
-        "Question 1 — Logic Check:\n"
-        "Apakah jawaban final secara logis mengikuti reasoning trace?\n\n"
-        "Question 2 — Disclosure Check:\n"
-        "Apakah reasoning trace mengandung anomali, warning, flag, atau masalah "
-        "(nilai negatif, spike tidak wajar, data hilang, hasil tidak terduga) "
-        "yang TIDAK disebutkan atau diungkap dalam jawaban final?\n\n"
-        "Jawab PERSIS dalam format ini (tidak ada teks lain):\n"
-        "LOGIC: PASS atau FLAG: [alasan singkat]\n"
-        "DISCLOSURE: PASS atau FLAG: [alasan singkat]\n"
-        "RESULT: PASS atau FLAG"
-    )
-    try:
-        resp = shadow_client.chat.completions.create(
-            model=SHADOW_CHECK_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = resp.choices[0].message.content.strip()
-        lines = {}
-        for line in text.splitlines():
-            if ": " in line:
-                k, v = line.split(": ", 1)
-                lines[k.strip().upper()] = v.strip()
-        logic      = lines.get("LOGIC", "PASS")
-        disclosure = lines.get("DISCLOSURE", "PASS")
-        result     = lines.get("RESULT", "PASS")
-        is_flag    = result.upper().startswith("FLAG") or \
-                     logic.upper().startswith("FLAG") or \
-                     disclosure.upper().startswith("FLAG")
-        return {
-            "result":     "FLAG" if is_flag else "PASS",
-            "logic":      logic,
-            "disclosure": disclosure,
-            "raw":        text,
-        }
-    except Exception as e:
-        return {"result": "PASS", "logic": "PASS", "disclosure": "PASS", "raw": str(e)}
+    class _cu:
+        update_task = staticmethod(_cu_update)
+        add_comment = staticmethod(_cu_comment)
+        create_escalation_task = staticmethod(_cu_escalate)
+        mark_in_progress = staticmethod(_cu_inprogress)
+    cu = _cu()
+except Exception:
+    import clickup_sync as cu
 
-
-def _calculate_confidence(
-    tool_calls_log: list,
-    query_keywords: list,
-    date_range: str,
-    thinking_steps: list | None = None,
-    ai_response: str = "",
-    client=None,
-    T_optimal: float | None = None,
-) -> dict:
-    """
-    6-factor confidence score sesuai research framework.
-    Weights: Completeness 25%, Tool_Routing 20%, Complexity 15%,
-             Data_Validation 15%, Freshness 15%, DNC 10%
-    T_optimal: temperature scaling scalar (Phase 2). Jika None, skip calibration.
-    """
-    thinking_steps = thinking_steps or []
-
-    # DAF: Expected fields per tool (untuk Completeness)
-    _TOOL_EXPECTED_FIELDS: dict[str, list[str]] = {
-        "get_daily_summary":       ["total_revenue", "total_transactions", "average_order_value"],
-        "get_date_range_metrics":  ["total_revenue", "total_transactions"],
-        "get_top_products":        ["products"],
-        "get_employee_performance":["employees"],
-    }
-
-    # DAF: Intent → expected tools (untuk Tool_Routing)
-    _INTENT_TOOL_MAP: list[tuple[list[str], list[str]]] = [
-        (["revenue", "pendapatan", "sales", "penjualan", "omzet", "pemasukan"],
-         ["get_daily_summary", "get_date_range_metrics"]),
-        (["produk", "product", "terlaris", "top", "item", "menu"],
-         ["get_top_products"]),
-        (["karyawan", "employee", "staff", "performa", "kasir"],
-         ["get_employee_performance"]),
-        (["range", "period", "rentang", "periode", "bulan", "minggu", "comparison", "compare"],
-         ["get_date_range_metrics"]),
-    ]
-
-    total_tools = len(tool_calls_log)
-    query_lower = " ".join(query_keywords).lower()
-
-    # 1. Completeness (25%): % required fields non-null per tool result (DAF spec)
-    if total_tools == 0:
-        completeness = 30.0
-        completeness_reason = "Tidak ada tool dipanggil, data tidak dapat diverifikasi"
-    else:
-        field_scores = []
-        for t in tool_calls_log:
-            result = t.get("result", {})
-            if "error" in result:
-                field_scores.append(0.0)
-                continue
-            expected = _TOOL_EXPECTED_FIELDS.get(t.get("tool", ""), [])
-            if not expected:
-                # Tool tidak dikenal, fallback ke cek result tidak kosong
-                field_scores.append(100.0 if result else 0.0)
-                continue
-            present = sum(
-                1 for f in expected
-                if result.get(f) is not None and result.get(f) != "" and result.get(f) != 0
-                   or (isinstance(result.get(f), list) and len(result.get(f)) > 0)
-            )
-            field_scores.append(present / len(expected) * 100)
-        completeness = round(sum(field_scores) / len(field_scores), 1)
-        if completeness >= 90:
-            completeness_reason = f"Data lengkap ({completeness:.0f}% required fields tersedia di semua tool)"
-        elif completeness >= 60:
-            completeness_reason = f"Sebagian field tersedia ({completeness:.0f}%) — beberapa data mungkin tidak lengkap"
-        else:
-            completeness_reason = f"Field data kurang lengkap ({completeness:.0f}%) — hasil analisis bisa tidak akurat"
-
-    # 2. Tool_Routing (20%): apakah tool yang dipanggil sesuai intent query (DAF spec)
-    if total_tools == 0:
-        tool_routing = 30.0
-        tool_routing_reason = "Tidak ada tool dipanggil"
-    else:
-        called_tools = set(t.get("tool", "") for t in tool_calls_log)
-        matched_intents = 0
-        total_intents = 0
-        for intent_kws, expected_tools in _INTENT_TOOL_MAP:
-            if any(kw in query_lower for kw in intent_kws):
-                total_intents += 1
-                if any(et in called_tools for et in expected_tools):
-                    matched_intents += 1
-        if total_intents == 0:
-            # Tidak ada intent yang teridentifikasi, cek minimal ada tool yang dipanggil
-            tool_routing = 70.0
-            tool_routing_reason = "Intent query tidak spesifik, tool dipanggil secara umum"
-        elif matched_intents == total_intents:
-            tool_routing = 100.0
-            tool_routing_reason = f"Tool yang dipanggil sesuai intent query ({matched_intents}/{total_intents} intent terpenuhi)"
-        elif matched_intents > 0:
-            tool_routing = round(matched_intents / total_intents * 100, 1)
-            tool_routing_reason = f"Sebagian intent terpenuhi ({matched_intents}/{total_intents}) — ada tool yang mungkin terlewat"
-        else:
-            tool_routing = 20.0
-            tool_routing_reason = "Tool yang dipanggil tidak sesuai dengan intent query"
-
-    # 3. Complexity (15%): klasifikasi simple/medium/complex sesuai DAF risk weighting
-    # Simple = 1 metrik, 1 tanggal → skor tinggi (rendah risiko)
-    # Medium = date range, comparison → skor sedang (risiko sedang)
-    # Complex = trend, cohort, multi-step → skor rendah (risiko tinggi, inherent uncertainty)
-    complex_kws  = {"trend", "cohort", "retention", "comparison", "compare", "bandingkan", "analisis", "forecast"}
-    medium_kws   = {"range", "rentang", "periode", "period", "minggu", "bulan", "weekly", "monthly"}
-    is_complex   = any(kw in query_lower for kw in complex_kws) or total_tools >= 3
-    is_medium    = any(kw in query_lower for kw in medium_kws) or total_tools == 2
-
-    if is_complex:
-        complexity = 60.0
-        complexity_reason = "Query kompleks (trend/cohort/multi-step) — inherent uncertainty tinggi, perlu review"
-    elif is_medium:
-        complexity = 80.0
-        complexity_reason = "Query medium (date range/comparison) — risiko moderat"
-    else:
-        complexity = 100.0
-        complexity_reason = "Query sederhana (single metric, single date) — risiko rendah"
-
-    # 4. Data_Validation (15%): cek anomali dalam result (nilai negatif, null)
-    if total_tools == 0:
-        data_validation = 50.0
-        data_validation_reason = "Tidak ada data untuk divalidasi"
-    else:
-        anomaly_count = 0
-        for t in tool_calls_log:
-            result = t.get("result", {})
-            if "error" in result:
-                anomaly_count += 1
-                continue
-            result_str = json.dumps(result)
-            if any(x in result_str for x in ['"null"', ': null', ': -', '"-']):
-                anomaly_count += 1
-        if anomaly_count == 0:
-            data_validation = 100.0
-            data_validation_reason = "Tidak ada anomali terdeteksi dalam data hasil tool"
-        elif anomaly_count == 1:
-            data_validation = 50.0
-            data_validation_reason = "Satu anomali/nilai mencurigakan terdeteksi dalam data"
-        else:
-            data_validation = 20.0
-            data_validation_reason = f"{anomaly_count} anomali terdeteksi — data perlu diverifikasi"
-
-    # 5. Freshness (15%): per-jam untuk POS data
-    try:
-        end_date_str = date_range.split(" - ")[-1].strip() if date_range else ""
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else datetime.now()
-        age_hours = (datetime.now() - end_date).total_seconds() / 3600
-    except (ValueError, AttributeError):
-        age_hours = 0
-
-    if age_hours <= 4:
-        freshness = 100.0
-        freshness_reason = f"Data {age_hours:.0f} jam yang lalu — sangat fresh"
-    elif age_hours <= 24:
-        freshness = 80.0
-        freshness_reason = f"Data {age_hours:.0f} jam yang lalu — fresh (hari ini)"
-    elif age_hours <= 168:  # 7 hari
-        freshness = 60.0
-        freshness_reason = f"Data {age_hours / 24:.0f} hari yang lalu — masih relevan"
-    elif age_hours <= 720:  # 30 hari
-        freshness = 35.0
-        freshness_reason = f"Data {age_hours / 24:.0f} hari yang lalu — agak lama"
-    else:
-        freshness = 10.0
-        freshness_reason = f"Data {age_hours / 24:.0f} hari yang lalu — historical"
-
-    # 6. DNC — Full 3-path (Path 1: anomaly, Path 2: numeric, Path 3: LLM judge)
-    dnc, dnc_reason = _score_dnc(thinking_steps, ai_response=ai_response, query_keywords=query_keywords, client=client)
-
-    raw_score = round(
-        completeness   * 0.25 +
-        tool_routing   * 0.20 +
-        complexity     * 0.15 +
-        data_validation * 0.15 +
-        freshness      * 0.15 +
-        dnc            * 0.10,
-        1,
-    )
-
-    # Calibration hook: temperature scaling (Phase 2)
-    if T_optimal is not None and T_optimal > 0:
-        # Transform: score_calibrated = 1 / (1 + exp(-logit(score/100) / T)) * 100
-        import math
-        p = max(0.01, min(0.99, raw_score / 100))
-        logit = math.log(p / (1 - p))
-        calibrated = 1 / (1 + math.exp(-logit / T_optimal)) * 100
-        final_score = round(calibrated, 1)
-    else:
-        final_score = raw_score
-
-    label = "high" if final_score >= 80 else "medium" if final_score >= 50 else "low"
-
-    return {
-        "score": final_score,
-        "label": label,
-        "breakdown": {
-            "completeness":    {"score": round(completeness, 1),    "weight": "25%", "reason": completeness_reason},
-            "tool_routing":    {"score": round(tool_routing, 1),    "weight": "20%", "reason": tool_routing_reason},
-            "complexity":      {"score": round(complexity, 1),      "weight": "15%", "reason": complexity_reason},
-            "data_validation": {"score": round(data_validation, 1), "weight": "15%", "reason": data_validation_reason},
-            "freshness":       {"score": round(freshness, 1),       "weight": "15%", "reason": freshness_reason},
-            "dnc":             {"score": round(dnc, 1),             "weight": "10%", "reason": dnc_reason},
-        },
-    }
+from .config import OLLAMA_MODEL, OLLAMA_BASE_URL, ESCALATION_THRESHOLD, MAX_LLM_ITERATIONS, TASK_FIELD_MAP
+from .tools import TOOLS, execute_tool
+from .scoring import calculate_confidence, explain_confidence, shadow_check
+from .gates import extract_or_clarify, gate0_check, synthesize_query, intent_classify
+from .prompts import build_system_prompt, build_user_prompt, build_summary_comment
 
 
 def _make_client() -> OpenAI:
@@ -468,161 +40,238 @@ def _make_client() -> OpenAI:
     )
 
 
-def _explain_confidence(
-    client: OpenAI,
+def _get_task_field(task: dict, key: str, default: str = "") -> str:
+    """Baca custom_field task via TASK_FIELD_MAP — satu tempat untuk update nama field."""
+    field_name = TASK_FIELD_MAP.get(key, key)
+    return task.get("custom_fields", {}).get(field_name) or default
+
+
+_LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs", "backend_api.log")
+os.makedirs(os.path.dirname(_LOG_PATH), exist_ok=True)
+
+_logger = logging.getLogger("engine")
+if not _logger.handlers:
+    _fh = logging.FileHandler(_LOG_PATH)
+    _fh.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S"))
+    _logger.addHandler(_fh)
+    _logger.setLevel(logging.INFO)
+
+
+# ── Post-process hook registry ─────────────────────────────────────────────
+# Daftarkan fungsi tambahan di sini tanpa ubah _post_process.
+# Signature: fn(client, ctx: dict) -> dict | None  (None = tidak ada event)
+_POST_HOOKS: list = []
+
+
+def register_post_hook(fn):
+    """Decorator/function untuk daftarkan hook post-processing."""
+    _POST_HOOKS.append(fn)
+    return fn
+
+
+def _ms(start: float) -> int:
+    return int((time.perf_counter() - start) * 1000)
+
+
+def _ck(label: str, t0: float, t_phase: float, extra: str = "") -> str:
+    total = _ms(t0)
+    phase = _ms(t_phase)
+    return f"[{total:>6}ms] CHECKPOINT {label:<30} phase={phase}ms {extra}".rstrip()
+
+
+def _run_tool_calls(msg, t0: float, iteration: int) -> tuple[list, list]:
+    """
+    Parse + eksekusi parallel semua tool_calls dari satu LLM message.
+    Return: (parsed_tcs, messages_to_append)
+    Extracted supaya tidak duplikat antara iter-1 dan iter-2+.
+    """
+    parsed_tcs = []
+    for tc in msg.tool_calls or []:
+        try:
+            inputs = json.loads(tc.function.arguments)
+        except Exception:
+            inputs = {}
+        parsed_tcs.append((tc, inputs))
+
+    if not parsed_tcs:
+        return [], []
+
+    t_tools = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=len(parsed_tcs)) as ex:
+        futures = {
+            ex.submit(execute_tool, tc.function.name, inputs): (tc, inputs)
+            for tc, inputs in parsed_tcs
+        }
+        tc_results = {}
+        for future in as_completed(futures):
+            tc, inputs = futures[future]
+            result_str = future.result()
+            result_obj = json.loads(result_str)
+            tc_results[tc.id] = (tc, inputs, result_str, result_obj)
+
+    tool_names = [tc.function.name for tc, _ in parsed_tcs]
+    _logger.info(_ck(f"tool_execute_iter_{iteration}", t0, t_tools, f"tools={tool_names}"))
+
+    log_entries = []
+    msg_entries = []
+    for tc, inputs in parsed_tcs:
+        _, _, result_str, result_obj = tc_results[tc.id]
+        log_entries.append({"tool": tc.function.name, "input": inputs, "result": result_obj})
+        msg_entries.append({"role": "tool", "tool_call_id": tc.id, "content": result_str})
+
+    return log_entries, msg_entries
+
+
+def _post_process(
+    client,
+    task_id: str,
     question: str,
+    brand: str,
     tool_calls_log: list,
+    thinking_steps: list,
     confidence: dict,
-    date_range: str,
-) -> dict:
-    """LLM call khusus: minta model jelaskan tiap faktor confidence secara detail."""
-    tools_summary = "\n".join(
-        f"- {tc['tool']}({list(tc.get('input', {}).keys())}): "
-        f"{str(tc.get('result', {}))[:300]}"
-        for tc in tool_calls_log
-    ) or "- Tidak ada tool call dilakukan"
-
-    factor_list = "\n".join(
-        f"- {k}: score={v['score']}%, weight={v['weight']}, alasan_singkat=\"{v['reason']}\""
-        for k, v in confidence["breakdown"].items()
-    )
-
-    prompt = (
-        f"Kamu adalah AI analyst. Berikan penjelasan DETAIL per-faktor mengapa skor confidence seperti ini.\n\n"
-        f"QUERY: {question}\n"
-        f"DATE RANGE: {date_range}\n\n"
-        f"TOOL CALLS & HASIL:\n{tools_summary}\n\n"
-        f"CONFIDENCE BREAKDOWN:\n{factor_list}\n\n"
-        f"TOTAL SCORE: {confidence['score']}% ({confidence['label']})\n\n"
-        "Untuk setiap faktor, tulis 2-3 kalimat dalam Bahasa Indonesia yang menjelaskan:\n"
-        "1. Mengapa skor itu diberikan berdasarkan konteks query & data nyata\n"
-        "2. Apa yang menyebabkan nilai tidak 100% (jika < 100%)\n\n"
-        "PENTING: Jawab HANYA JSON valid ini, tanpa teks lain:\n"
-        '{"completeness":"...","tool_routing":"...","complexity":"...","data_validation":"...","freshness":"...","dnc":"..."}'
-    )
-
-    try:
-        resp = client.chat.completions.create(
-            model=OLLAMA_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = resp.choices[0].message.content.strip()
-        # Bersihkan jika LLM wrap dengan markdown code block
-        if "```" in text:
-            parts = text.split("```")
-            text = parts[1] if len(parts) > 1 else parts[0]
-            if text.startswith("json"):
-                text = text[4:].strip()
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start >= 0 and end > start:
-            return json.loads(text[start:end])
-    except Exception:
-        pass
-    return {}
-
-
-def _check_clarification(question: str, brand: str, date_range: str) -> list[str]:
-    """Return list pertanyaan klarifikasi jika input ambigu. Kosong = siap proses."""
-    issues = []
-    if not brand or brand.strip() == "":
-        issues.append("Brand belum dipilih. Pilih brand mana yang ingin dianalisis?")
-    if not date_range or date_range.strip() == "":
-        issues.append("Rentang tanggal belum diisi. Periode mana yang ingin dianalisis? (contoh: 2024-01-01 - 2024-01-31)")
-    if len(question.split()) < 4:
-        issues.append(f"Pertanyaan '{question}' terlalu singkat. Bisa diperjelas maksudnya?")
-    return issues
-
-
-def _build_system_prompt(store_id: str) -> str:
-    return (
-        f"Kamu adalah AI analyst untuk data POS Loyverse. "
-        f"Store ID yang boleh diakses: {store_id}. "
-        "Analisis pertanyaan user dan gunakan tools yang paling relevan secara mandiri. "
-        "Jawab dalam Bahasa Indonesia, ringkas dan akurat. Sertakan angka spesifik dari data."
-    )
-
-def _build_summary_comment(
-    question: str,
-    thinking_steps: list[dict],
-    tool_calls_log: list[dict],
-    confidence: dict,
+    confidence_score: int,
     resolution_status: str,
     ai_response: str,
-) -> str:
-    parts = []
+    date_range: str,
+    out_queue: Queue,
+    t0: float,
+    ordered_trace: list = None,
+):
+    reasoning_trace = " ".join(s.get("message", "") for s in thinking_steps)
+    ctx = {
+        "task_id": task_id, "question": question, "brand": brand,
+        "tool_calls_log": tool_calls_log, "thinking_steps": thinking_steps,
+        "confidence": confidence, "confidence_score": confidence_score,
+        "resolution_status": resolution_status, "ai_response": ai_response,
+        "date_range": date_range, "reasoning_trace": reasoning_trace,
+    }
 
-    parts.append("## 🤖 AI Agent Execution Summary\n")
-    parts.append(f"**Task:** {question}\n")
+    shadow_result = None
+    explanations_result = None
 
-    if thinking_steps:
-        parts.append("---\n### 🧠 Thinking Process\n")
-        stage_icon = {"understanding": "🔍", "reasoning": "⚙️", "inner_monologue": "💭"}
-        stage_label = {"understanding": "Understand", "reasoning": "Reason", "inner_monologue": "Thought"}
-        for step in thinking_steps:
-            s = step.get("stage", "")
-            icon = stage_icon.get(s, "•")
-            label = stage_label.get(s, s)
-            parts.append(f"- {icon} **{label}:** {step.get('message', '')}")
-        parts.append("")
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        t_pp = time.perf_counter()
+        f_shadow  = ex.submit(shadow_check, client, question, reasoning_trace, ai_response)
+        f_explain = ex.submit(explain_confidence, client, question, tool_calls_log, confidence, date_range)
 
-    if tool_calls_log:
-        parts.append(f"---\n### 🔧 Tool Calls ({len(tool_calls_log)} calls)\n")
-        for i, tc in enumerate(tool_calls_log, 1):
-            args = ", ".join(f"`{k}`=`{v}`" for k, v in tc.get("input", {}).items())
-            parts.append(f"**{i}. `{tc['tool']}`** ({args})\n")
-            result = tc.get("result", {})
-            if "error" in result:
-                parts.append(f"> ❌ Error: {result['error']}\n")
-            else:
-                keys = list(result.keys())[:5]
-                parts.append("| Key | Value |")
-                parts.append("|-----|-------|")
-                for k in keys:
-                    parts.append(f"| {k} | {result[k]} |")
-                parts.append("")
+        try:
+            shadow_result = f_shadow.result(timeout=30)
+            _logger.info(_ck("shadow_check", t0, t_pp, f"result={shadow_result['result']}"))
+            out_queue.put({"event": "shadow_check", **shadow_result})
+            if shadow_result["result"] == "FLAG":
+                ctx["resolution_status"] = "AM Review Required (Shadow Check FLAG)"
+        except Exception as e:
+            _logger.info(_ck("shadow_check_ERROR", t0, t_pp, str(e)))
 
-    bd = confidence["breakdown"]
-    score = int(confidence["score"])
-    label = confidence["label"].upper()
-    bar = "🟢" if score >= 80 else "🟡" if score >= 50 else "🔴"
-    parts.append(f"---\n### 📊 Confidence Score: {bar} **{score}%** `{label}`\n")
-    parts.append("| Dimension | Weight | Score | Reason |")
-    parts.append("|-----------|--------|-------|--------|")
-    for dim, val in bd.items():
-        parts.append(f"| {dim.capitalize()} | {val['weight']} | {val['score']}% | {val['reason']} |")
-    parts.append("")
+        try:
+            t_exp = time.perf_counter()
+            explanations_result = f_explain.result(timeout=30)
+            _logger.info(_ck("explain_confidence", t0, t_exp))
+            if explanations_result:
+                out_queue.put({"event": "confidence_explanation", "explanations": explanations_result})
+        except Exception as e:
+            _logger.info(_ck("explain_confidence_ERROR", t0, t_pp, str(e)))
 
-    res_icon = "✅" if "Direct" in resolution_status else "⚠️"
-    parts.append(f"---\n**Resolution:** {res_icon} {resolution_status}\n")
+    resolution_status = str(ctx["resolution_status"])
 
-    parts.append("---\n### 💬 Final Answer\n")
-    parts.append(ai_response)
+    t_cu = time.perf_counter()
+    try:
+        cu.update_task(
+            task_id, ai_response, confidence_score, resolution_status,
+            execution_trace={
+                "ordered_trace": ordered_trace or [],
+                "thinking_steps": thinking_steps,
+                "tool_calls": tool_calls_log,
+                "confidence": confidence,
+                "shadow_check": shadow_result,
+                "confidence_explanation": explanations_result,
+            }
+        )
+        _logger.info(_ck("cu.update_task", t0, t_cu))
+    except Exception:
+        pass
 
-    return "\n".join(parts)
+    if confidence_score < ESCALATION_THRESHOLD:
+        reason = (
+            f"Confidence score {confidence_score}% di bawah threshold {ESCALATION_THRESHOLD}%. "
+            "Data tidak mencukupi untuk analisis yang diminta."
+        )
+        try:
+            t_esc = time.perf_counter()
+            cu.create_escalation_task(task_id, question, brand, reason)
+            _logger.info(_ck("cu.create_escalation", t0, t_esc))
+        except Exception:
+            pass
+
+    try:
+        t_cmt = time.perf_counter()
+        comment = build_summary_comment(
+            question=question, thinking_steps=thinking_steps,
+            tool_calls_log=tool_calls_log, confidence=confidence,
+            resolution_status=resolution_status, ai_response=ai_response,
+        )
+        cu.add_comment(task_id, comment)
+        _logger.info(_ck("cu.add_comment", t0, t_cmt))
+    except Exception:
+        pass
+
+    # Run registered post-hooks
+    for hook in _POST_HOOKS:
+        try:
+            result = hook(client, ctx)
+            if result:
+                out_queue.put(result)
+        except Exception as e:
+            _logger.info("post_hook_ERROR hook=%s err=%s", getattr(hook, '__name__', '?'), e)
+
+    _logger.info("[%6dms] DONE task_id=%s resolution=%r", _ms(t0), task_id, resolution_status)
+    out_queue.put(None)
 
 
-
-def route_stream(task: dict, force: bool = False) -> Generator[dict, None, None]:
-    """Generator yang yield SSE events secara real-time saat AI memproses task."""
-    question = task["task_name"]
-
-    brand = task["custom_fields"].get("Brand", "")
+def route_stream(task: dict, force: bool = False, query_override: str | None = None) -> Generator[dict, None, None]:
+    t0 = time.perf_counter()
+    original_question = task["task_name"]
     task_id = task["task_id"]
-    date_range = task["custom_fields"].get("Date Range", "")
+    _logger.info("[     0ms] START task_id=%s q=%r", task_id, original_question[:80])
 
-    # Cek cache — jika sudah ada ai_response dan tidak force, replay execution_trace
+    if query_override and query_override.strip():
+        t_synth = time.perf_counter()
+        synth_client = _make_client()
+        question = synthesize_query(synth_client, original_question, query_override.strip())
+        _logger.info(_ck("synthesize_query", t0, t_synth))
+        yield {"event": "query_refined", "original": original_question, "clarification": query_override.strip(), "refined": question}
+    else:
+        question = original_question
+
+    brand      = _get_task_field(task, "brand")
+    date_range = _get_task_field(task, "date_range")
+
+    # Cache hit
     if not force and task.get("ai_response"):
         trace = task.get("execution_trace", {})
         yield {"event": "cached", "message": "Menggunakan hasil analisis sebelumnya"}
-        for step in trace.get("thinking_steps", []):
-            yield {"event": "thinking", **step}
-        for tc in trace.get("tool_calls", []):
-            yield {"event": "tool_call", "tool": tc["tool"], "input": tc["input"]}
-            yield {"event": "tool_result", "tool": tc["tool"], "result": tc["result"]}
+        
+        if "ordered_trace" in trace:
+            for evt in trace["ordered_trace"]:
+                yield evt
+        else:
+            for step in trace.get("thinking_steps", []):
+                yield {"event": "thinking", **step}
+            for tc in trace.get("tool_calls", []):
+                yield {"event": "tool_call", "tool": tc["tool"], "input": tc["input"]}
+                yield {"event": "tool_result", "tool": tc["tool"], "result": tc["result"]}
+                
+        if trace.get("shadow_check"):
+            yield {"event": "shadow_check", **trace["shadow_check"]}
+            
+        if trace.get("confidence_explanation"):
+            yield {"event": "confidence_explanation", "explanations": trace["confidence_explanation"]}
+
         if trace.get("confidence"):
             c = trace["confidence"]
             yield {"event": "confidence", "score": c["score"], "label": c["label"], "breakdown": c["breakdown"]}
+            
         yield {
             "event": "done",
             "resolution": task["custom_fields"].get("Resolution Status") or "AI Direct Send",
@@ -630,63 +279,189 @@ def route_stream(task: dict, force: bool = False) -> Generator[dict, None, None]
             "escalation_task": None,
             "summary": "",
             "cached": True,
+            "timing_ms": 0,
         }
         return
 
-    clarification_needed = _check_clarification(question, brand, date_range)
-    if clarification_needed:
+    # Brand Resolution — fast path alias match, slow path Haiku fallback
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    t_brand = time.perf_counter()
+    _br_client = _make_client()
+    brand_info = resolve_brand(question, _br_client)
+    _logger.info(_ck("brand_resolution", t0, t_brand, f"result={brand_info}"))
+
+    if brand_info is None:
         yield {
             "event": "clarification_needed",
-            "questions": clarification_needed,
-            "message": "Butuh info tambahan sebelum analisis bisa dilakukan.",
+            "question": "Brand mana yang dimaksud?",
+            "slots": ["brand"],
+            "message": "Tidak dapat menentukan brand dari query. Mohon sebutkan nama brand secara eksplisit.",
         }
         return
 
-    try:
-        store_id = get_store_id(brand)
-    except BrandAccessError as e:
-        yield {"event": "error", "message": str(e)}
+    brand      = brand_info["brand_id"]
+    store_id   = brand_info["store_id"]
+    project_id = brand_info["project_id"]
+    yield {"event": "brand_resolved", "brand_id": brand, "store_id": store_id, "project_id": project_id}
+
+    # Intent Classification — step terpisah, return state + confidence
+    t_intent = time.perf_counter()
+    _ic_client = _make_client()
+    intent = intent_classify(_ic_client, question)
+    _logger.info(_ck("intent_classify", t0, t_intent,
+                     f"state={intent['state']} confidence={intent.get('confidence', '?'):.2f}"))
+    yield {"event": "intent_classified", **intent}
+
+    if intent["result"] == "CLARIFY":
+        yield {
+            "event": "clarification_needed",
+            "question": "Query tidak dapat diklasifikasikan dengan confidence yang cukup.",
+            "slots": [{"label": "clarification", "options": []}],
+            "message": f"Intent classifier: {intent.get('reasoning', '')}",
+        }
         return
 
-    thinking_steps = []
-    step_understanding = {"stage": "understanding", "message": f"Memahami pertanyaan: \"{question}\"", "context": {"brand": brand, "store_id": store_id, "date_range": date_range}}
-    thinking_steps.append(step_understanding)
-    yield {"event": "thinking", **step_understanding}
+    # Extract date_range jika masih kosong
+    if not date_range:
+        t_extract = time.perf_counter()
+        _ext_client = _make_client()
+        ctx = extract_or_clarify(_ext_client, question, today_str)
+        _logger.info(_ck("extract_or_clarify", t0, t_extract, f"result={ctx['result']}"))
 
-    user_content = (
-        f"Pertanyaan: {question}\n"
-        f"Brand: {brand} | Store: {store_id}\n"
-        f"Rentang tanggal: {date_range}\n\n"
-        "Gunakan tools yang paling relevan untuk menjawab pertanyaan ini."
-    )
+        if ctx["result"] == "EXTRACTED":
+            date_range = ctx["date_range"] or date_range
+            yield {"event": "context_extracted", "brand": brand, "date_range": date_range}
+        else:
+            yield {
+                "event":    "clarification_needed",
+                "question": ctx["question"],
+                "slots":    ctx["slots"],
+                "message":  "Sistem membutuhkan informasi tambahan.",
+            }
+            return
 
+    # Mark in_progress di ClickUp
+    try:
+        cu.mark_in_progress(task_id)
+    except Exception:
+        pass
+
+    # ── Optimistic: gate0 + LLM iter 1 jalan PARALEL ─────────────────────────
+    # 99% query = VALID, jadi LLM iter 1 biasanya langsung dipakai
+    user_content = build_user_prompt(question, brand, store_id, date_range)
     client = _make_client()
-    messages = [
-        {"role": "system", "content": _build_system_prompt(store_id)},
+    messages_init = [
+        {"role": "system", "content": build_system_prompt(store_id)},
         {"role": "user", "content": user_content},
     ]
-    tool_calls_log = []
-    iteration = 0
 
-    for _ in range(5):
-        iteration += 1
+    def _run_gate0():
+        t = time.perf_counter()
+        gc = _make_client()
+        r = gate0_check(gc, question, datetime.now().strftime("%Y-%m-%d"))
+        _logger.info(_ck("gate0_check", t0, t, f"result={r['result']}"))
+        return r
 
-        step_reasoning = {"stage": "reasoning", "message": f"[Iterasi {iteration}] Menentukan tool yang tepat..."}
-        thinking_steps.append(step_reasoning)
-        yield {"event": "thinking", **step_reasoning}
-
-        response = client.chat.completions.create(
+    def _run_llm_iter1():
+        t = time.perf_counter()
+        r = client.chat.completions.create(
             model=OLLAMA_MODEL,
-            messages=messages,
+            messages=messages_init,
             tools=TOOLS,
             tool_choice="auto",
         )
+        _logger.info(_ck("llm_call_iter_1", t0, t,
+                         f"finish={r.choices[0].finish_reason} "
+                         f"tool_calls={len(r.choices[0].message.tool_calls or [])}"))
+        return r
+
+    t_par = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_gate0 = ex.submit(_run_gate0)
+        f_llm1  = ex.submit(_run_llm_iter1)
+        gate0   = f_gate0.result()
+        llm1    = f_llm1.result()
+    _logger.info(_ck("parallel_gate0+llm1", t0, t_par,
+                     f"gate0={gate0['result']}"))
+
+    yield {"event": "gate0", "result": gate0["result"], "message": gate0["message"]}
+
+    if gate0["result"] == "CLARIFY":
+        # Discard LLM result, tanya user dulu
+        yield {
+            "event": "gate0_clarify",
+            "message": gate0["message"],
+            "question": gate0["question"],
+            "options": gate0["options"],
+            "note": "Query mengandung kontradiksi logis. Semua proses downstream di-skip.",
+        }
+        return
+
+    # gate0 = VALID → pakai LLM iter 1 yang sudah siap
+    ordered_trace = []
+    thinking_steps = []
+    step_understanding = {
+        "stage": "understanding",
+        "message": f"Memahami pertanyaan: \"{question}\"",
+        "context": {"brand": brand, "store_id": store_id, "date_range": date_range},
+    }
+    thinking_steps.append(step_understanding)
+    ordered_trace.append({"event": "thinking", **step_understanding})
+    yield {"event": "thinking", **step_understanding}
+
+    messages = messages_init.copy()
+    tool_calls_log = []
+
+    # Proses hasil llm1 langsung (iter 1 sudah selesai)
+    step_reasoning = {"stage": "reasoning", "message": "[Iterasi 1] Menentukan tool yang tepat..."}
+    thinking_steps.append(step_reasoning)
+    ordered_trace.append({"event": "thinking", **step_reasoning})
+    yield {"event": "thinking", **step_reasoning}
+
+    # Proses iter-1
+    msg1    = llm1.choices[0].message
+    finish1 = llm1.choices[0].finish_reason
+
+    if msg1.content and msg1.content.strip():
+        step_mono = {"stage": "inner_monologue", "message": msg1.content.strip()}
+        thinking_steps.append(step_mono)
+        ordered_trace.append({"event": "thinking", **step_mono})
+        yield {"event": "thinking", **step_mono}
+
+    iter1_done = finish1 == "stop" or not msg1.tool_calls
+    if iter1_done:
+        messages.append({"role": "assistant", "content": msg1.content or ""})
+    else:
+        messages.append(msg1)
+        log_entries, msg_entries = _run_tool_calls(msg1, t0, 1)
+        for entry in log_entries:
+            tool_calls_log.append(entry)
+            ordered_trace.append({"event": "tool_call", "tool": entry["tool"], "input": entry["input"]})
+            yield {"event": "tool_call", "tool": entry["tool"], "input": entry["input"]}
+            ordered_trace.append({"event": "tool_result", "tool": entry["tool"], "result": entry["result"]})
+            yield {"event": "tool_result", "tool": entry["tool"], "result": entry["result"]}
+        messages.extend(msg_entries)
+
+    # Iterasi lanjutan
+    for iteration in (range(2, MAX_LLM_ITERATIONS + 1) if not iter1_done else []):
+        step_reasoning = {"stage": "reasoning", "message": f"[Iterasi {iteration}] Menentukan tool yang tepat..."}
+        thinking_steps.append(step_reasoning)
+        ordered_trace.append({"event": "thinking", **step_reasoning})
+        yield {"event": "thinking", **step_reasoning}
+
+        t_llm = time.perf_counter()
+        response = client.chat.completions.create(
+            model=OLLAMA_MODEL, messages=messages, tools=TOOLS, tool_choice="auto",
+        )
         msg = response.choices[0].message
         finish_reason = response.choices[0].finish_reason
+        _logger.info(_ck(f"llm_call_iter_{iteration}", t0, t_llm,
+                         f"finish={finish_reason} tool_calls={len(msg.tool_calls or [])}"))
 
         if msg.content and msg.content.strip():
             step_mono = {"stage": "inner_monologue", "message": msg.content.strip()}
             thinking_steps.append(step_mono)
+            ordered_trace.append({"event": "thinking", **step_mono})
             yield {"event": "thinking", **step_mono}
 
         if finish_reason == "stop" or not msg.tool_calls:
@@ -694,125 +469,67 @@ def route_stream(task: dict, force: bool = False) -> Generator[dict, None, None]
             break
 
         messages.append(msg)
-        for tc in msg.tool_calls:
-            try:
-                inputs = json.loads(tc.function.arguments)
-            except Exception:
-                inputs = {}
+        log_entries, msg_entries = _run_tool_calls(msg, t0, iteration)
+        for entry in log_entries:
+            tool_calls_log.append(entry)
+            ordered_trace.append({"event": "tool_call", "tool": entry["tool"], "input": entry["input"]})
+            yield {"event": "tool_call", "tool": entry["tool"], "input": entry["input"]}
+            ordered_trace.append({"event": "tool_result", "tool": entry["tool"], "result": entry["result"]})
+            yield {"event": "tool_result", "tool": entry["tool"], "result": entry["result"]}
+        messages.extend(msg_entries)
 
-            # Step 3: Tool call transparan
-            yield {
-                "event": "tool_call",
-                "tool": tc.function.name,
-                "input": inputs,
-            }
+    final_msg = messages[-1]
+    ai_response = (final_msg.get("content", "") if isinstance(final_msg, dict) else (final_msg.content or "")).strip()
 
-            result_str = _execute_tool(tc.function.name, inputs)
-            result_obj = json.loads(result_str)
-            tool_calls_log.append({
-                "tool": tc.function.name,
-                "input": inputs,
-                "result": result_obj,
-            })
-
-            # Step 4: Tool result transparan
-            yield {
-                "event": "tool_result",
-                "tool": tc.function.name,
-                "result": result_obj,
-            }
-
-            messages.append({"role": "tool", "tool_call_id": tc.id, "content": result_str})
-
-    final_text = (
-        messages[-1].get("content", "") if isinstance(messages[-1], dict)
-        else (messages[-1].content or "")
-    )
-    ai_response = final_text.strip()
-
-    keywords = [w for w in question.lower().split() if len(w) > 3]
-    confidence = _calculate_confidence(
+    # Confidence (no LLM)
+    t_conf = time.perf_counter()
+    keywords   = [w for w in question.lower().split() if len(w) > 3]
+    confidence = calculate_confidence(
         tool_calls_log, keywords, date_range,
         thinking_steps=thinking_steps,
         ai_response=ai_response,
-        client=client,
+        client=None,
     )
-    confidence_score = int(confidence["score"])
-    confidence_breakdown = confidence["breakdown"]
+    confidence_score  = int(confidence["score"])
     resolution_status = "AI Direct Send" if confidence_score >= ESCALATION_THRESHOLD else "AM Review Required"
+    _logger.info(_ck("calculate_confidence", t0, t_conf, f"score={confidence_score}%"))
 
-    # Step 5: Confidence score
-    yield {
-        "event": "confidence",
-        "score": confidence_score,
-        "label": confidence["label"],
-        "breakdown": confidence_breakdown,
-    }
+    yield {"event": "confidence", "score": confidence_score, "label": confidence["label"], "breakdown": confidence["breakdown"]}
 
-    # Step 5b: LLM explanation per-faktor
-    try:
-        explanations = _explain_confidence(client, question, tool_calls_log, confidence, date_range)
-        if explanations:
-            yield {"event": "confidence_explanation", "explanations": explanations}
-    except Exception:
-        pass
+    # ✅ YIELD DONE — jawaban langsung tampil
+    answer_ms = _ms(t0)
+    _logger.info("[%6dms] *** ANSWER VISIBLE *** task_id=%s", answer_ms, task_id)
 
-    # Step 5c: Shadow Check (secondary AI judge — binary veto)
-    try:
-        reasoning_trace_text = " ".join(s.get("message", "") for s in thinking_steps)
-        shadow = _shadow_check(client, question, reasoning_trace_text, ai_response)
-        yield {"event": "shadow_check", **shadow}
-        # Jika FLAG: override resolution ke AM Review
-        if shadow["result"] == "FLAG":
-            resolution_status = "AM Review Required (Shadow Check FLAG)"
-    except Exception:
-        pass
-
-    try:
-        cu.update_task(
-            task_id, ai_response, confidence_score, resolution_status,
-            execution_trace={
-                "thinking_steps": thinking_steps,
-                "tool_calls": tool_calls_log,
-                "confidence": confidence,
-            }
-        )
-    except Exception:
-        pass
-
-    escalation_task = None
-    if confidence_score < ESCALATION_THRESHOLD:
-        reason = (
-            f"Confidence score {confidence_score}% di bawah threshold {ESCALATION_THRESHOLD}%. "
-            "Data tidak mencukupi untuk analisis yang diminta."
-        )
-        try:
-            escalation_task = cu.create_escalation_task(task_id, question, brand, reason)
-        except Exception:
-            pass
-
-    comment = ""
-    try:
-        comment = _build_summary_comment(
-            question=question,
-            thinking_steps=thinking_steps,
-            tool_calls_log=tool_calls_log,
-            confidence=confidence,
-            resolution_status=resolution_status,
-            ai_response=ai_response,
-        )
-        cu.add_comment(task_id, comment)
-    except Exception:
-        pass
-
-    # Step 6: Final answer
     yield {
         "event": "done",
         "resolution": resolution_status,
         "response": ai_response,
-        "escalation_task": escalation_task,
-        "summary": comment,
+        "escalation_task": None,
+        "summary": "",
+        "timing_ms": answer_ms,
     }
+
+    # Background post-processing
+    out_queue: Queue = Queue()
+    bg_executor = ThreadPoolExecutor(max_workers=1)
+    bg_executor.submit(
+        _post_process,
+        client, task_id, question, brand,
+        tool_calls_log, thinking_steps, confidence,
+        confidence_score, resolution_status, ai_response, date_range,
+        out_queue, t0, ordered_trace,
+    )
+
+    while True:
+        try:
+            event = out_queue.get(timeout=60)
+        except Empty:
+            break
+        if event is None:
+            break
+        yield event
+
+    bg_executor.shutdown(wait=False)
 
 
 def route(task: dict) -> dict:
@@ -823,12 +540,12 @@ def route(task: dict) -> dict:
         if event["event"] == "tool_result":
             tool_calls_log.append({"tool": event["tool"], "result": event["result"]})
         elif event["event"] == "confidence":
-            result["confidence_score"] = event["score"]
-            result["confidence_label"] = event["label"]
+            result["confidence_score"]     = event["score"]
+            result["confidence_label"]     = event["label"]
             result["confidence_breakdown"] = event["breakdown"]
         elif event["event"] == "done":
-            result["ai_response"] = event["response"]
+            result["ai_response"]       = event["response"]
             result["resolution_status"] = event["resolution"]
-            result["escalation_task"] = event["escalation_task"]
+            result["escalation_task"]   = event["escalation_task"]
     result["tool_calls"] = tool_calls_log
     return result

@@ -1,0 +1,144 @@
+openapi: "3.0.0"
+info:
+  title: Loyverse Tools API
+  version: "1.0"
+  description: Tool definitions for Loyverse POS data fetching (States 1 & 2)
+
+paths:
+  /get_daily_summary:
+    post:
+      operationId: get_daily_summary
+      summary: Ambil ringkasan penjualan harian satu toko
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, date]
+              properties:
+                store_id:
+                  type: string
+                  example: store_001
+                date:
+                  type: string
+                  format: date
+                  example: "2026-02-26"
+      responses:
+        "200":
+          description: Daily summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  store_id: { type: string }
+                  date: { type: string }
+                  total_revenue: { type: number }
+                  total_transactions: { type: integer }
+                  new_customers: { type: integer }
+                  avg_transaction_value: { type: number }
+
+  /get_top_products:
+    post:
+      operationId: get_top_products
+      summary: Ambil produk terlaris berdasarkan revenue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, date]
+              properties:
+                store_id: { type: string }
+                date: { type: string, format: date }
+                limit:
+                  type: integer
+                  default: 5
+      responses:
+        "200":
+          description: List produk terlaris
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    product_name: { type: string }
+                    qty: { type: integer }
+                    subtotal_idr: { type: number }
+
+  /get_employee_performance:
+    post:
+      operationId: get_employee_performance
+      summary: Ambil performa karyawan (transaksi & revenue per karyawan)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, date]
+              properties:
+                store_id: { type: string }
+                date: { type: string, format: date }
+      responses:
+        "200":
+          description: Map employee_name → { transactions, total_revenue }
+
+  /get_store_info:
+    post:
+      operationId: get_store_info
+      summary: Ambil metadata toko (nama, lokasi, brand, dsb)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id]
+              properties:
+                store_id: { type: string }
+      responses:
+        "200":
+          description: Store metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  store_id: { type: string }
+                  store_name: { type: string }
+                  brand: { type: string }
+                  location: { type: string }
+                  currency: { type: string }
+                  timezone: { type: string }
+
+  /get_date_range_metrics:
+    post:
+      operationId: get_date_range_metrics
+      summary: Ambil metrik agregat dalam rentang tanggal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, start_date, end_date]
+              properties:
+                store_id: { type: string }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+      responses:
+        "200":
+          description: Aggregated metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_revenue_idr: { type: number }
+                  total_transactions: { type: integer }
+                  dates_with_data: { type: array, items: { type: string } }

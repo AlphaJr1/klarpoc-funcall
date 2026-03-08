@@ -1,0 +1,225 @@
+openapi: "3.0.0"
+info:
+  title: ClickUp Tools
+  version: "1.0"
+
+# ── Read Tools (State 3: Project Management data source) ──────────────────────
+paths:
+  /clickup/project/{project_id}/status:
+    get:
+      operationId: get_project_status
+      summary: Ambil status & progress project dari ClickUp list
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ClickUp list_id. Gunakan 'all' jika tidak diketahui.
+      responses:
+        "200":
+          description: Project status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project_id: { type: string }
+                  total_tasks: { type: integer }
+                  completed_tasks: { type: integer }
+                  progress_percent: { type: integer }
+                  tasks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        task_id: { type: string }
+                        task_name: { type: string }
+                        status: { type: string }
+                        assignee: { type: string }
+                        due_date: { type: string, nullable: true }
+
+  /clickup/project/{project_id}/overdue:
+    get:
+      operationId: get_overdue_tasks
+      summary: Ambil task overdue (melewati due date)
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ClickUp list_id, atau 'all' untuk semua task
+      responses:
+        "200":
+          description: List of overdue tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    task_id: { type: string }
+                    task_name: { type: string }
+                    status: { type: string }
+                    assignee: { type: string }
+                    due_date: { type: string }
+                    days_overdue: { type: integer }
+
+  /clickup/tasks/by-assignee:
+    get:
+      operationId: get_tasks_by_assignee
+      summary: Ambil semua task untuk satu assignee
+      parameters:
+        - name: assignee
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: week
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Rentang minggu, e.g. '2026-03-03 to 2026-03-07'
+        - name: status_filter
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter status, e.g. 'in progress'
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    task_id: { type: string }
+                    task_name: { type: string }
+                    status: { type: string }
+                    assignee: { type: string }
+                    due_date: { type: string, nullable: true }
+
+# ── Write Tools (semua state, post-answer lifecycle) ──────────────────────────
+  /clickup/task/{task_id}:
+    get:
+      operationId: get_task_details
+      summary: Ambil detail task (custom fields, status, AI response)
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task detail
+    patch:
+      operationId: update_task
+      summary: Update task dengan AI response + confidence score
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ai_response, confidence_score, resolution_status]
+              properties:
+                ai_response: { type: string }
+                confidence_score:
+                  type: integer
+                  description: "0-100. ≥95=resolved, 80-94=in_review, <80=escalated"
+                resolution_status: { type: string }
+                execution_trace: { type: object, nullable: true }
+      responses:
+        "200":
+          description: Updated task
+
+  /clickup/task/{task_id}/comment:
+    post:
+      operationId: add_comment
+      summary: Tambah comment (reasoning/audit trail) ke task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment: { type: string }
+      responses:
+        "200":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment_id: { type: string }
+                  author: { type: string }
+                  timestamp: { type: string }
+
+  /clickup/task/{task_id}/assign:
+    post:
+      operationId: assign_task
+      summary: Assign task ke AM tertentu (untuk task flagged/sensitive)
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assignee_id]
+              properties:
+                assignee_id: { type: string, description: ClickUp user ID }
+      responses:
+        "200":
+          description: Task assigned
+
+  /clickup/list/task:
+    post:
+      operationId: create_task
+      summary: Buat task baru (follow-up jika confidence rendah)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_name, brand, date_range]
+              properties:
+                task_name: { type: string }
+                brand: { type: string }
+                date_range: { type: string }
+                priority:
+                  type: string
+                  enum: [Urgent, High, Medium, Low]
+                  default: Medium
+                description: { type: string }
+      responses:
+        "201":
+          description: Task created

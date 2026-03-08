@@ -4,6 +4,12 @@ import uuid
 from datetime import datetime, timezone
 from .config import CLICKUP_FILE, CLICKUP_BACKUP_FILE, ESCALATION_THRESHOLD, RESOLVED_THRESHOLD
 
+__all__ = [
+    "get_open_tasks", "get_all_tasks", "get_task_by_id",
+    "update_task", "add_comment", "create_escalation_task", "create_task",
+    "mark_in_progress", "submit_task", "reset_task", "update_task_fields",
+]
+
 
 def _ensure_backup() -> None:
     """Buat backup jika belum ada."""
@@ -29,6 +35,77 @@ def _task_lifecycle_status(confidence_score: int) -> str:
     elif confidence_score < ESCALATION_THRESHOLD:
         return "escalated"
     return "in_review"
+
+
+def mark_in_progress(task_id: str) -> dict:
+    data = _load()
+    for task in data["tasks"]:
+        if task["task_id"] == task_id:
+            task["status"] = "in_progress"
+            _save(data)
+            return task
+    raise ValueError(f"Task '{task_id}' tidak ditemukan.")
+
+
+def submit_task(task_id: str, ai_summary: str) -> dict:
+    """AM submit: set status complete, simpan summary ke description."""
+    data = _load()
+    for task in data["tasks"]:
+        if task["task_id"] == task_id:
+            task["status"] = "complete"
+            task["description"] = ai_summary
+            task["custom_fields"]["Resolution Status"] = "Completed by AM"
+            task.setdefault("comments", []).append({
+                "comment_id": uuid.uuid4().hex[:8],
+                "author": "AM",
+                "text": f"[SUBMITTED] AM telah approve dan submit jawaban AI ke ClickUp.",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            _save(data)
+    raise ValueError(f"Task '{task_id}' tidak ditemukan.")
+
+
+def reset_task(task_id: str) -> dict:
+    data = _load()
+    for task in data["tasks"]:
+        if task["task_id"] == task_id:
+            task["status"] = "open"
+            task["ai_response"] = None
+            task.pop("execution_trace", None)
+            task["custom_fields"]["AI Confidence Score"] = None
+            task["custom_fields"]["Resolution Status"] = None
+            task["comments"] = []
+            task["description"] = ""
+            _save(data)
+            return task
+    raise ValueError(f"Task '{task_id}' tidak ditemukan.")
+
+
+def update_task_fields(task_id: str, fields: dict) -> dict:
+    data = _load()
+    for task in data["tasks"]:
+        if task["task_id"] == task_id:
+            if "name" in fields:
+                task["task_name"] = fields["name"]
+            if "description" in fields:
+                task["description"] = fields["description"]
+            if "status" in fields:
+                task["status"] = fields["status"]
+            if "priority" in fields:
+                task["custom_fields"]["Priority"] = fields["priority"]
+            if "custom_fields" in fields:
+                cf = fields["custom_fields"]
+                for k, v in cf.items():
+                    # Map uuid custom field ke nama (dummy logic)
+                    if k == "brand" or "brand" in k.lower():
+                        task["custom_fields"]["Brand"] = v
+                    elif k == "date_range" or "date" in k.lower():
+                        task["custom_fields"]["Date Range"] = v
+                    else:
+                        task["custom_fields"][k] = v
+            _save(data)
+            return task
+    raise ValueError(f"Task '{task_id}' tidak ditemukan.")
 
 
 def get_open_tasks() -> list[dict]:

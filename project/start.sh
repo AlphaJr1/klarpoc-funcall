@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 
-# Script Description: Start up the frontend (Next.js) and backend (FastAPI) applications in the background.
-# Logs are routed to specific log files, and rotated if they already exist.
+# Start all services: Python Backend (FastAPI), Go Backend (Gin), Frontend (Next.js)
 
 PROJECT_DIR=$(dirname "$(realpath "$0")")
 LOG_DIR="$PROJECT_DIR/logs"
-
-# Create log directory if it doesn't exist
 mkdir -p "$LOG_DIR"
 
-# Helper function to rotate logs
 rotate_log() {
     local log_file=$1
     if [ -f "$log_file" ]; then
@@ -21,46 +17,41 @@ rotate_log() {
     fi
 }
 
-echo "=============== STARTING SERVICES ==============="
-
-# Define log files
-BACKEND_LOG="$LOG_DIR/backend_api.log"
+BACKEND_PY_LOG="$LOG_DIR/backend_api.log"
+BACKEND_GO_LOG="$LOG_DIR/backend_go.log"
 FRONTEND_LOG="$LOG_DIR/frontend_ui.log"
 
-# Rotate existing logs
-rotate_log "$BACKEND_LOG"
-rotate_log "$FRONTEND_LOG"
+echo "=============== STARTING SERVICES ==============="
 
-# 1. Start Backend (FastAPI)
-echo "Starting Backend API (FastAPI)..."
+# 1. Python Backend (FastAPI) - port 8000
+rotate_log "$BACKEND_PY_LOG"
+echo "Starting Python Backend (FastAPI)..."
 cd "$PROJECT_DIR"
+../.venv/bin/python3.14 -m pip install -q fastapi uvicorn python-dotenv openai pydantic requests
+nohup ../.venv/bin/python3.14 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 > "$BACKEND_PY_LOG" 2>&1 &
+echo $! > "$LOG_DIR/backend_py.pid"
+echo "Python Backend started [PID: $(cat $LOG_DIR/backend_py.pid)]. Log: $BACKEND_PY_LOG"
 
-# Ensure fastapi and uvicorn are installed
-pip install -q fastapi uvicorn python-dotenv openai
+# 2. Go Backend (Gin) - port 8080
+rotate_log "$BACKEND_GO_LOG"
+echo "Starting Go Backend (Gin)..."
+cd "$PROJECT_DIR/go-api"
+nohup go run cmd/api/main.go > "$BACKEND_GO_LOG" 2>&1 &
+echo $! > "$LOG_DIR/backend_go.pid"
+echo "Go Backend started [PID: $(cat $LOG_DIR/backend_go.pid)]. Log: $BACKEND_GO_LOG"
 
-# Start the API server in the background
-nohup python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 > "$BACKEND_LOG" 2>&1 &
-BACKEND_PID=$!
-echo $BACKEND_PID > "$LOG_DIR/backend.pid"
-echo "Backend started with PID: $BACKEND_PID. Log: $BACKEND_LOG"
-
-
-# 2. Start Frontend (Next.js)
-echo "Starting Frontend UI (Next.js)..."
+# 3. Frontend (Next.js)
+rotate_log "$FRONTEND_LOG"
+echo "Starting Frontend (Next.js)..."
 cd "$PROJECT_DIR/ui"
-
-# Ensure dependencies are installed (optional but safe)
 npm install --silent
-
-# Start the frontend server in the background
 nohup npm run dev > "$FRONTEND_LOG" 2>&1 &
-FRONTEND_PID=$!
-echo $FRONTEND_PID > "$LOG_DIR/frontend.pid"
-echo "Frontend started with PID: $FRONTEND_PID. Log: $FRONTEND_LOG"
+echo $! > "$LOG_DIR/frontend.pid"
+echo "Frontend started [PID: $(cat $LOG_DIR/frontend.pid)]. Log: $FRONTEND_LOG"
 
 echo "================================================="
-echo "All services started successfully in the background."
-echo "You can view logs with:"
-echo "  tail -f $BACKEND_LOG"
-echo "  tail -f $FRONTEND_LOG"
+echo "Services:"
+echo "  Python API  -> http://localhost:8000"
+echo "  Go API      -> http://localhost:8080"
+echo "  Frontend    -> http://localhost:3000"
 echo "================================================="

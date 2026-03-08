@@ -102,24 +102,42 @@
         "Brand": "Kopi_Brand_A",
         "Date Range": "2026-02-24",
         "Priority": "High",
-        "AI Confidence Score": 77,
-        "Resolution Status": "AM Review Required"
+        "AI Confidence Score": 73,
+        "Resolution Status": "AM Review Required (Shadow Check FLAG)"
       },
       "ai_response_accuracy": "correct",
       "comments": [
         {
-          "comment_id": "7609c75a",
+          "comment_id": "c1d0eaf4",
           "author": "AI Agent",
-          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** What was total revenue yesterday (Feb 24)?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"What was total revenue yesterday (Feb 24)?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** ## Total Revenue Yesterday (Feb 24, 2026)\n\nUntuk **store_001 (Kopi_Brand_A)** pada tanggal 24 Februari 2026:\n\n| Metrik | Nilai |\n|--------|-------|\n| **Total Revenue** | **Rp 236.500** |\n| Total Transaksi | 2 |\n| Total Items Sold | 8 |\n| Rata-rata Nilai Transaksi | Rp 118.250 |\n| Metode Pembayaran | Cash: Rp 209.000, Card: Rp 27.500 |\n| Produk Terlaris | Espresso Single Shot |\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_001 |\n| date | 2026-02-24 |\n| total_transactions | 2 |\n| total_revenue_idr | 236500 |\n| total_items_sold | 8 |\n\n---\n### 📊 Confidence Score: 🟡 **77%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 33.3% | Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana (single metric, single date) — risiko rendah |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 60.0% | Data 7 hari yang lalu — masih relevan |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (4) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\n## Total Revenue Yesterday (Feb 24, 2026)\n\nUntuk **store_001 (Kopi_Brand_A)** pada tanggal 24 Februari 2026:\n\n| Metrik | Nilai |\n|--------|-------|\n| **Total Revenue** | **Rp 236.500** |\n| Total Transaksi | 2 |\n| Total Items Sold | 8 |\n| Rata-rata Nilai Transaksi | Rp 118.250 |\n| Metode Pembayaran | Cash: Rp 209.000, Card: Rp 27.500 |\n| Produk Terlaris | Espresso Single Shot |",
-          "timestamp": "2026-03-02T08:56:04.392975+00:00"
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** What was total revenue on February 24, 2026?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"What was total revenue on February 24, 2026?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** **Total Revenue pada 24 Februari 2026:**\n\n- **Total Revenue: Rp 236.500**\n- Total Transaksi: 2\n- Rata-rata nilai transaksi: Rp 118.250\n- Metode pembayaran: Tunai (Rp 209.000), Kartu (Rp 27.500)\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_001 |\n| date | 2026-02-24 |\n| total_transactions | 2 |\n| total_revenue_idr | 236500 |\n| total_items_sold | 8 |\n\n---\n### 📊 Confidence Score: 🟡 **73%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 33.3% | Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 35.0% | Data 9 hari yang lalu — agak lama |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (4) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\n**Total Revenue pada 24 Februari 2026:**\n\n- **Total Revenue: Rp 236.500**\n- Total Transaksi: 2\n- Rata-rata nilai transaksi: Rp 118.250\n- Metode pembayaran: Tunai (Rp 209.000), Kartu (Rp 27.500)",
+          "timestamp": "2026-03-04T17:32:55.197497+00:00"
+        },
+        {
+          "comment_id": "80407a6a",
+          "author": "AI Agent",
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** What was total revenue on February 24, 2026?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"What was total revenue on February 24, 2026?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** **Total Revenue pada 24 February 2026:**\n\n| Metrik | Nilai |\n|--------|-------|\n| **Total Revenue** | **IDR 236.500** |\n| Total Transaksi | 2 |\n| Total Items Sold | 8 |\n| Rata-rata Transaksi | IDR 118.250 |\n| Metode Pembayaran | Cash: IDR 209.000, Card: IDR 27.500 |\n| Produk Terlaris | Espresso Single Shot |\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_001 |\n| date | 2026-02-24 |\n| total_transactions | 2 |\n| total_revenue_idr | 236500 |\n| total_items_sold | 8 |\n\n---\n### 📊 Confidence Score: 🟡 **68%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 33.3% | Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 35.0% | Data 9 hari yang lalu — agak lama |\n| Dnc | 10% | 45.0% | Jawaban tidak mengandung angka Rp padahal query meminta data numerik |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\n**Total Revenue pada 24 February 2026:**\n\n| Metrik | Nilai |\n|--------|-------|\n| **Total Revenue** | **IDR 236.500** |\n| Total Transaksi | 2 |\n| Total Items Sold | 8 |\n| Rata-rata Transaksi | IDR 118.250 |\n| Metode Pembayaran | Cash: IDR 209.000, Card: IDR 27.500 |\n| Produk Terlaris | Espresso Single Shot |",
+          "timestamp": "2026-03-04T17:42:58.129654+00:00"
+        },
+        {
+          "comment_id": "61a93607",
+          "author": "AI Agent",
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** What was total revenue on March 3, 2026?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"What was total revenue on March 3, 2026?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 3] Menentukan tool yang tepat...\n- 💭 **Thought:** Berdasarkan data yang tersedia di sistem Loyverse untuk store_001 (Kopi_Brand_A), **tidak ada data yang ditemukan untuk tanggal 3 Maret 2026**.\n\nKemungkinan penyebab:\n- Toko belum beroperasi pada tanggal tersebut\n- Tidak ada transaksi yang tercatat\n- Data belum tersedia di sistem\n\nApakah Anda ingin melihat data pada rentang tanggal lain atau tanggal yang lebih awal?\n\n---\n### 🔧 Tool Calls (2 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-03-03`, `store_id`=`store_001`)\n\n> ❌ Error: Data tidak ditemukan.\n\n**2. `get_date_range_metrics`** (`end_date`=`2026-03-03`, `start_date`=`2026-03-03`, `store_id`=`store_001`)\n\n> ❌ Error: Data tidak ditemukan.\n\n---\n### 📊 Confidence Score: 🔴 **41%** `LOW`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 0.0% | Field data kurang lengkap (0%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 60.0% | Query medium | fallback penalty: 2 tool gagal & di-retry |\n| Data_validation | 15% | 20.0% | 2 anomali terdeteksi — data perlu diverifikasi |\n| Freshness | 15% | 35.0% | Data 9 hari yang lalu — agak lama |\n| Dnc | 10% | 40.0% | Scope mismatch: tanggal 2026-03-03 tidak ada datanya, tapi AI menjawab dengan data dari range berbeda tanpa menyebut keterbatasan ini |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\nBerdasarkan data yang tersedia di sistem Loyverse untuk store_001 (Kopi_Brand_A), **tidak ada data yang ditemukan untuk tanggal 3 Maret 2026**.\n\nKemungkinan penyebab:\n- Toko belum beroperasi pada tanggal tersebut\n- Tidak ada transaksi yang tercatat\n- Data belum tersedia di sistem\n\nApakah Anda ingin melihat data pada rentang tanggal lain atau tanggal yang lebih awal?",
+          "timestamp": "2026-03-04T17:44:56.570377+00:00"
+        },
+        {
+          "comment_id": "41354a61",
+          "author": "AI Agent",
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** What was the total revenue on February 24, 2026?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"What was the total revenue on February 24, 2026?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** Total revenue pada tanggal 24 Februari 2026 untuk store_001 (Kopi_Brand_A) adalah **Rp 236.500**.\n\nRincian:\n- Total transaksi: 2\n- Total item terjual: 8\n- Rata-rata nilai transaksi: Rp 118.250\n- Metode pembayaran: Tunai Rp 209.000, Kartu Rp 27.500\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_001 |\n| date | 2026-02-24 |\n| total_transactions | 2 |\n| total_revenue_idr | 236500 |\n| total_items_sold | 8 |\n\n---\n### 📊 Confidence Score: 🟡 **73%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 33.3% | Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 35.0% | Data 10 hari yang lalu — agak lama |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (4) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required (Shadow Check FLAG)\n\n---\n### 💬 Final Answer\n\nTotal revenue pada tanggal 24 Februari 2026 untuk store_001 (Kopi_Brand_A) adalah **Rp 236.500**.\n\nRincian:\n- Total transaksi: 2\n- Total item terjual: 8\n- Rata-rata nilai transaksi: Rp 118.250\n- Metode pembayaran: Tunai Rp 209.000, Kartu Rp 27.500",
+          "timestamp": "2026-03-05T09:58:08.209903+00:00"
         }
       ],
-      "ai_response": "## Total Revenue Yesterday (Feb 24, 2026)\n\nUntuk **store_001 (Kopi_Brand_A)** pada tanggal 24 Februari 2026:\n\n| Metrik | Nilai |\n|--------|-------|\n| **Total Revenue** | **Rp 236.500** |\n| Total Transaksi | 2 |\n| Total Items Sold | 8 |\n| Rata-rata Nilai Transaksi | Rp 118.250 |\n| Metode Pembayaran | Cash: Rp 209.000, Card: Rp 27.500 |\n| Produk Terlaris | Espresso Single Shot |",
+      "ai_response": "Total revenue pada tanggal 24 Februari 2026 untuk store_001 (Kopi_Brand_A) adalah **Rp 236.500**.\n\nRincian:\n- Total transaksi: 2\n- Total item terjual: 8\n- Rata-rata nilai transaksi: Rp 118.250\n- Metode pembayaran: Tunai Rp 209.000, Kartu Rp 27.500",
       "execution_trace": {
         "thinking_steps": [
           {
             "stage": "understanding",
-            "message": "Memahami pertanyaan: \"What was total revenue yesterday (Feb 24)?\"",
+            "message": "Memahami pertanyaan: \"What was the total revenue on February 24, 2026?\"",
             "context": {
               "brand": "Kopi_Brand_A",
               "store_id": "store_001",
@@ -136,7 +154,7 @@
           },
           {
             "stage": "inner_monologue",
-            "message": "## Total Revenue Yesterday (Feb 24, 2026)\n\nUntuk **store_001 (Kopi_Brand_A)** pada tanggal 24 Februari 2026:\n\n| Metrik | Nilai |\n|--------|-------|\n| **Total Revenue** | **Rp 236.500** |\n| Total Transaksi | 2 |\n| Total Items Sold | 8 |\n| Rata-rata Nilai Transaksi | Rp 118.250 |\n| Metode Pembayaran | Cash: Rp 209.000, Card: Rp 27.500 |\n| Produk Terlaris | Espresso Single Shot |"
+            "message": "Total revenue pada tanggal 24 Februari 2026 untuk store_001 (Kopi_Brand_A) adalah **Rp 236.500**.\n\nRincian:\n- Total transaksi: 2\n- Total item terjual: 8\n- Rata-rata nilai transaksi: Rp 118.250\n- Metode pembayaran: Tunai Rp 209.000, Kartu Rp 27.500"
           }
         ],
         "tool_calls": [
@@ -165,7 +183,7 @@
           }
         ],
         "confidence": {
-          "score": 77.3,
+          "score": 73.6,
           "label": "medium",
           "breakdown": {
             "completeness": {
@@ -181,7 +199,7 @@
             "complexity": {
               "score": 100.0,
               "weight": "15%",
-              "reason": "Query sederhana (single metric, single date) — risiko rendah"
+              "reason": "Query sederhana"
             },
             "data_validation": {
               "score": 100.0,
@@ -189,9 +207,9 @@
               "reason": "Tidak ada anomali terdeteksi dalam data hasil tool"
             },
             "freshness": {
-              "score": 60.0,
+              "score": 35.0,
               "weight": "15%",
-              "reason": "Data 7 hari yang lalu — masih relevan"
+              "reason": "Data 10 hari yang lalu — agak lama"
             },
             "dnc": {
               "score": 100.0,
@@ -206,8 +224,8 @@
       "task_id": "task_002",
       "list_id": "list_001",
       "task_name": "How many new customers at Fashion_Brand_B on Feb 24?",
-      "description": "Agent: Budi | Brand: Fashion_Brand_B | Customer acquisition tracking",
-      "status": "open",
+      "description": "## Jawaban\n\nBerdasarkan data **store_002 (Fashion_Brand_B)** pada tanggal **24 Februari 2026**:\n\n- **New Customers: 0**\n\nPada hari tersebut, hanya ada 1 transaksi dari 1 pelanggan, dan pelanggan tersebut merupakan pelanggan berulang (repeat customer), bukan pelanggan baru.",
+      "status": "complete",
       "date_created": "2026-02-25T08:30:00Z",
       "date_due": "2026-02-25T09:30:00Z",
       "assigned_to": "AI Agent",
@@ -216,19 +234,127 @@
         "Brand": "Fashion_Brand_B",
         "Date Range": "2026-02-24",
         "Priority": "Medium",
-        "AI Confidence Score": null,
-        "Resolution Status": null
+        "AI Confidence Score": 67,
+        "Resolution Status": "Completed by AM"
       },
       "ai_response_accuracy": "correct",
-      "comments": [],
-      "ai_response": null
+      "comments": [
+        {
+          "comment_id": "40bd8cd7",
+          "author": "AI Agent",
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** How many new customers at Fashion_Brand_B on Feb 24?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"How many new customers at Fashion_Brand_B on Feb 24?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** Berdasarkan data dari **store_002** (Fashion_Brand_B) pada tanggal **24 February 2026**:\n\n**Jumlah new customers: 0**\n\nDetail tambahan:\n- Total transaksi: 1\n- Total customers: 1 (semuanya repeat customer)\n- Repeat customers: 1\n- Total revenue: Rp 973.500\n\nJadi tidak ada pelanggan baru (new customer) pada tanggal tersebut, seluruh transaksi berasal dari pelanggan yang sudah pernah datang sebelumnya.\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-02-24`, `store_id`=`store_002`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_002 |\n| date | 2026-02-24 |\n| total_transactions | 1 |\n| total_revenue_idr | 973500 |\n| total_items_sold | 4 |\n\n---\n### 📊 Confidence Score: 🟡 **67%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 33.3% | Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 70.0% | Intent query tidak spesifik, tool dipanggil secara umum |\n| Complexity | 15% | 100.0% | Query sederhana |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 35.0% | Data 10 hari yang lalu — agak lama |\n| Dnc | 10% | 100.0% | Reasoning trace konsisten, tidak ada konflik atau anomali terdeteksi |\n\n---\n**Resolution:** ⚠️ AM Review Required (Shadow Check FLAG)\n\n---\n### 💬 Final Answer\n\nBerdasarkan data dari **store_002** (Fashion_Brand_B) pada tanggal **24 February 2026**:\n\n**Jumlah new customers: 0**\n\nDetail tambahan:\n- Total transaksi: 1\n- Total customers: 1 (semuanya repeat customer)\n- Repeat customers: 1\n- Total revenue: Rp 973.500\n\nJadi tidak ada pelanggan baru (new customer) pada tanggal tersebut, seluruh transaksi berasal dari pelanggan yang sudah pernah datang sebelumnya.",
+          "timestamp": "2026-03-05T10:05:18.924568+00:00"
+        },
+        {
+          "comment_id": "3e19a0af",
+          "author": "AI Agent",
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** How many new customers at Fashion_Brand_B on Feb 24?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"How many new customers at Fashion_Brand_B on Feb 24?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- 💭 **Thought:** Saya akan menggunakan `get_daily_summary` untuk melihat ringkasan penjualan harian pada tanggal tersebut.\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** ## Jawaban\n\nBerdasarkan data **store_002 (Fashion_Brand_B)** pada tanggal **24 Februari 2026**:\n\n- **New Customers: 0**\n\nPada hari tersebut, hanya ada 1 transaksi dari 1 pelanggan, dan pelanggan tersebut merupakan pelanggan berulang (repeat customer), bukan pelanggan baru.\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_daily_summary`** (`date`=`2026-02-24`, `store_id`=`store_002`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_002 |\n| date | 2026-02-24 |\n| total_transactions | 1 |\n| total_revenue_idr | 973500 |\n| total_items_sold | 4 |\n\n---\n### 📊 Confidence Score: 🟡 **67%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 33.3% | Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 70.0% | Intent query tidak spesifik, tool dipanggil secara umum |\n| Complexity | 15% | 100.0% | Query sederhana |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 35.0% | Data 10 hari yang lalu — agak lama |\n| Dnc | 10% | 100.0% | Reasoning trace konsisten, tidak ada konflik atau anomali terdeteksi |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\n## Jawaban\n\nBerdasarkan data **store_002 (Fashion_Brand_B)** pada tanggal **24 Februari 2026**:\n\n- **New Customers: 0**\n\nPada hari tersebut, hanya ada 1 transaksi dari 1 pelanggan, dan pelanggan tersebut merupakan pelanggan berulang (repeat customer), bukan pelanggan baru.",
+          "timestamp": "2026-03-05T14:16:00.465103+00:00"
+        },
+        {
+          "comment_id": "fc10472c",
+          "author": "AM",
+          "text": "[SUBMITTED] AM telah approve dan submit jawaban AI ke ClickUp.",
+          "timestamp": "2026-03-05T14:18:04.540561+00:00"
+        }
+      ],
+      "ai_response": "## Jawaban\n\nBerdasarkan data **store_002 (Fashion_Brand_B)** pada tanggal **24 Februari 2026**:\n\n- **New Customers: 0**\n\nPada hari tersebut, hanya ada 1 transaksi dari 1 pelanggan, dan pelanggan tersebut merupakan pelanggan berulang (repeat customer), bukan pelanggan baru.",
+      "execution_trace": {
+        "thinking_steps": [
+          {
+            "stage": "understanding",
+            "message": "Memahami pertanyaan: \"How many new customers at Fashion_Brand_B on Feb 24?\"",
+            "context": {
+              "brand": "Fashion_Brand_B",
+              "store_id": "store_002",
+              "date_range": "2026-02-24"
+            }
+          },
+          {
+            "stage": "reasoning",
+            "message": "[Iterasi 1] Menentukan tool yang tepat..."
+          },
+          {
+            "stage": "inner_monologue",
+            "message": "Saya akan menggunakan `get_daily_summary` untuk melihat ringkasan penjualan harian pada tanggal tersebut."
+          },
+          {
+            "stage": "reasoning",
+            "message": "[Iterasi 2] Menentukan tool yang tepat..."
+          },
+          {
+            "stage": "inner_monologue",
+            "message": "## Jawaban\n\nBerdasarkan data **store_002 (Fashion_Brand_B)** pada tanggal **24 Februari 2026**:\n\n- **New Customers: 0**\n\nPada hari tersebut, hanya ada 1 transaksi dari 1 pelanggan, dan pelanggan tersebut merupakan pelanggan berulang (repeat customer), bukan pelanggan baru."
+          }
+        ],
+        "tool_calls": [
+          {
+            "tool": "get_daily_summary",
+            "input": {
+              "date": "2026-02-24",
+              "store_id": "store_002"
+            },
+            "result": {
+              "store_id": "store_002",
+              "date": "2026-02-24",
+              "total_transactions": 1,
+              "total_revenue_idr": 973500,
+              "total_items_sold": 4,
+              "total_customers": 1,
+              "new_customers": 0,
+              "repeat_customers": 1,
+              "avg_transaction_value_idr": 973500,
+              "top_product": "Jeans Premium",
+              "payment_methods": {
+                "card": 973500
+              }
+            }
+          }
+        ],
+        "confidence": {
+          "score": 67.6,
+          "label": "medium",
+          "breakdown": {
+            "completeness": {
+              "score": 33.3,
+              "weight": "25%",
+              "reason": "Field data kurang lengkap (33%) — hasil analisis bisa tidak akurat"
+            },
+            "tool_routing": {
+              "score": 70.0,
+              "weight": "20%",
+              "reason": "Intent query tidak spesifik, tool dipanggil secara umum"
+            },
+            "complexity": {
+              "score": 100.0,
+              "weight": "15%",
+              "reason": "Query sederhana"
+            },
+            "data_validation": {
+              "score": 100.0,
+              "weight": "15%",
+              "reason": "Tidak ada anomali terdeteksi dalam data hasil tool"
+            },
+            "freshness": {
+              "score": 35.0,
+              "weight": "15%",
+              "reason": "Data 10 hari yang lalu — agak lama"
+            },
+            "dnc": {
+              "score": 100.0,
+              "weight": "10%",
+              "reason": "Reasoning trace konsisten, tidak ada konflik atau anomali terdeteksi"
+            }
+          }
+        }
+      }
     },
     {
       "task_id": "task_003",
       "list_id": "list_001",
       "task_name": "Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)",
       "description": "Agent: Ahmad | Brand: Kopi_Brand_A | Monthly trend for strategic planning",
-      "status": "escalated",
+      "status": "open",
       "date_created": "2026-02-25T09:00:00Z",
       "date_due": "2026-02-25T16:00:00Z",
       "assigned_to": "AI Agent",
@@ -237,27 +363,40 @@
         "Brand": "Kopi_Brand_A",
         "Date Range": "2026-01-01 to 2026-02-25",
         "Priority": "High",
-        "AI Confidence Score": 67,
-        "Resolution Status": "AM Review Required"
+        "AI Confidence Score": null,
+        "Resolution Status": null
       },
-      "comments": [
-        {
-          "comment_id": "a576319c",
-          "author": "AI Agent",
-          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** ## Hasil Analisis: Revenue Comparison Jan 2026 vs Feb 2026\n\n**Store:** store_001 (Kopi_Brand_A)\n\n| Periode | Total Revenue (IDR) | Total Transaksi | Rata-rata/Transaksi |\n|---------|---------------------|-----------------|---------------------|\n| **Jan 2026** (1-31 Jan) | - | 0 | - |\n| **Feb 2026** (1-25 Feb) | 275.000 | 3 | 91.666 |\n\n### Catatan Penting:\n1. **Januari 2026**: Tidak ada data transaksi ditemukan untuk periode ini\n2. **Februari 2026**: Data hanya tersedia untuk **23-24 Feb 2026** (3 transaksi)\n\n### Kesimpulan:\nBelum bisa melakukan perbandingan apples-to-apples karena data Januari 2026 kosong. Untuk Feb 2026 (hanya 2 hari data), total revenue adalah **Rp 275.000** dengan 3 transaksi.\n\nApakah Anda ingin saya mengambil data tanggal lain atau menganalisis metrik lainnya?\n\n---\n### 🔧 Tool Calls (2 calls)\n\n**1. `get_date_range_metrics`** (`end_date`=`2026-01-31`, `start_date`=`2026-01-01`, `store_id`=`store_001`)\n\n> ❌ Error: Data tidak ditemukan.\n\n**2. `get_date_range_metrics`** (`end_date`=`2026-02-25`, `start_date`=`2026-02-01`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| store_id | store_001 |\n| start_date | 2026-02-01 |\n| end_date | 2026-02-25 |\n| dates_with_data | ['2026-02-23', '2026-02-24'] |\n| total_transactions | 3 |\n\n---\n### 📊 Confidence Score: 🟡 **67%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 25.0% | Field data kurang lengkap (25%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (2/2 intent terpenuhi) |\n| Complexity | 15% | 60.0% | Query kompleks (trend/cohort/multi-step) — inherent uncertainty tinggi, perlu review |\n| Data_validation | 15% | 50.0% | Satu anomali/nilai mencurigakan terdeteksi dalam data |\n| Freshness | 15% | 100.0% | Data 0 jam yang lalu — sangat fresh |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (1) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\n## Hasil Analisis: Revenue Comparison Jan 2026 vs Feb 2026\n\n**Store:** store_001 (Kopi_Brand_A)\n\n| Periode | Total Revenue (IDR) | Total Transaksi | Rata-rata/Transaksi |\n|---------|---------------------|-----------------|---------------------|\n| **Jan 2026** (1-31 Jan) | - | 0 | - |\n| **Feb 2026** (1-25 Feb) | 275.000 | 3 | 91.666 |\n\n### Catatan Penting:\n1. **Januari 2026**: Tidak ada data transaksi ditemukan untuk periode ini\n2. **Februari 2026**: Data hanya tersedia untuk **23-24 Feb 2026** (3 transaksi)\n\n### Kesimpulan:\nBelum bisa melakukan perbandingan apples-to-apples karena data Januari 2026 kosong. Untuk Feb 2026 (hanya 2 hari data), total revenue adalah **Rp 275.000** dengan 3 transaksi.\n\nApakah Anda ingin saya mengambil data tanggal lain atau menganalisis metrik lainnya?",
-          "timestamp": "2026-03-02T09:15:37.206952+00:00"
-        }
-      ],
-      "ai_response": "## Hasil Analisis: Revenue Comparison Jan 2026 vs Feb 2026\n\n**Store:** store_001 (Kopi_Brand_A)\n\n| Periode | Total Revenue (IDR) | Total Transaksi | Rata-rata/Transaksi |\n|---------|---------------------|-----------------|---------------------|\n| **Jan 2026** (1-31 Jan) | - | 0 | - |\n| **Feb 2026** (1-25 Feb) | 275.000 | 3 | 91.666 |\n\n### Catatan Penting:\n1. **Januari 2026**: Tidak ada data transaksi ditemukan untuk periode ini\n2. **Februari 2026**: Data hanya tersedia untuk **23-24 Feb 2026** (3 transaksi)\n\n### Kesimpulan:\nBelum bisa melakukan perbandingan apples-to-apples karena data Januari 2026 kosong. Untuk Feb 2026 (hanya 2 hari data), total revenue adalah **Rp 275.000** dengan 3 transaksi.\n\nApakah Anda ingin saya mengambil data tanggal lain atau menganalisis metrik lainnya?",
+      "comments": [],
+      "ai_response": null
+    },
+    {
+      "task_id": "task_004",
+      "list_id": "list_002",
+      "task_name": "Client Report: Fashion_Brand_B Top Products Feb 24",
+      "description": "Agent: Budi | Prepare weekly client report on product performance",
+      "status": "in_review",
+      "date_created": "2026-02-25T10:00:00Z",
+      "date_due": "2026-02-25T14:00:00Z",
+      "assigned_to": "AI Agent",
+      "custom_fields": {
+        "Query Type": "Sales Performance",
+        "Brand": "Fashion_Brand_B",
+        "Date Range": "2026-02-24",
+        "Priority": "High",
+        "AI Confidence Score": 90,
+        "Resolution Status": "AM Review Required (Shadow Check FLAG)"
+      },
+      "comments": [],
+      "ai_response": "## Laporan Produk Terlaris - Fashion_Brand_B\n**Store:** store_002 | **Tanggal:** 2026-02-24\n\n### Produk Terlaris:\n\n| No | Produk | Jumlah Terjual | Revenue (IDR) |\n|----|--------|----------------|---------------|\n| 1 | Jeans Premium | 1 | Rp 450.000 |\n| 2 | Cotton T-Shirt | 3 | Rp 435.000 |\n\n**Total Produk Terjual:** 4 unit  \n**Total Revenue:** Rp 885.000\n\n**Insight:** Cotton T-Shirt lebih banyak terjual (3 pcs) namun memberikan revenue lebih rendah (Rp 435.000) dibandingkan Jeans Premium yang hanya terjual 1 pcs namun menghasilkan revenue lebih tinggi (Rp 450.000).",
       "execution_trace": {
         "thinking_steps": [
           {
             "stage": "understanding",
-            "message": "Memahami pertanyaan: \"Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)\"",
+            "message": "Memahami pertanyaan: \"Client Report: Fashion_Brand_B Top Products Feb 24\"",
             "context": {
-              "brand": "Kopi_Brand_A",
-              "store_id": "store_001",
-              "date_range": "2026-01-01 to 2026-02-25"
+              "brand": "Fashion_Brand_B",
+              "store_id": "store_002",
+              "date_range": "2026-02-24"
             }
           },
           {
@@ -270,107 +409,74 @@
           },
           {
             "stage": "inner_monologue",
-            "message": "## Hasil Analisis: Revenue Comparison Jan 2026 vs Feb 2026\n\n**Store:** store_001 (Kopi_Brand_A)\n\n| Periode | Total Revenue (IDR) | Total Transaksi | Rata-rata/Transaksi |\n|---------|---------------------|-----------------|---------------------|\n| **Jan 2026** (1-31 Jan) | - | 0 | - |\n| **Feb 2026** (1-25 Feb) | 275.000 | 3 | 91.666 |\n\n### Catatan Penting:\n1. **Januari 2026**: Tidak ada data transaksi ditemukan untuk periode ini\n2. **Februari 2026**: Data hanya tersedia untuk **23-24 Feb 2026** (3 transaksi)\n\n### Kesimpulan:\nBelum bisa melakukan perbandingan apples-to-apples karena data Januari 2026 kosong. Untuk Feb 2026 (hanya 2 hari data), total revenue adalah **Rp 275.000** dengan 3 transaksi.\n\nApakah Anda ingin saya mengambil data tanggal lain atau menganalisis metrik lainnya?"
+            "message": "## Laporan Produk Terlaris - Fashion_Brand_B\n**Store:** store_002 | **Tanggal:** 2026-02-24\n\n### Produk Terlaris:\n\n| No | Produk | Jumlah Terjual | Revenue (IDR) |\n|----|--------|----------------|---------------|\n| 1 | Jeans Premium | 1 | Rp 450.000 |\n| 2 | Cotton T-Shirt | 3 | Rp 435.000 |\n\n**Total Produk Terjual:** 4 unit  \n**Total Revenue:** Rp 885.000\n\n**Insight:** Cotton T-Shirt lebih banyak terjual (3 pcs) namun memberikan revenue lebih rendah (Rp 435.000) dibandingkan Jeans Premium yang hanya terjual 1 pcs namun menghasilkan revenue lebih tinggi (Rp 450.000)."
           }
         ],
         "tool_calls": [
           {
-            "tool": "get_date_range_metrics",
+            "tool": "get_top_products",
             "input": {
-              "end_date": "2026-01-31",
-              "start_date": "2026-01-01",
-              "store_id": "store_001"
+              "date": "2026-02-24",
+              "store_id": "store_002"
             },
-            "result": {
-              "error": "Data tidak ditemukan."
-            }
-          },
-          {
-            "tool": "get_date_range_metrics",
-            "input": {
-              "end_date": "2026-02-25",
-              "start_date": "2026-02-01",
-              "store_id": "store_001"
-            },
-            "result": {
-              "store_id": "store_001",
-              "start_date": "2026-02-01",
-              "end_date": "2026-02-25",
-              "dates_with_data": [
-                "2026-02-23",
-                "2026-02-24"
-              ],
-              "total_transactions": 3,
-              "total_revenue_idr": 275000,
-              "total_items_sold": 9,
-              "avg_transaction_value_idr": 91666
-            }
+            "result": [
+              {
+                "product_name": "Jeans Premium",
+                "qty": 1,
+                "subtotal_idr": 450000
+              },
+              {
+                "product_name": "Cotton T-Shirt",
+                "qty": 3,
+                "subtotal_idr": 435000
+              }
+            ]
           }
         ],
         "confidence": {
-          "score": 67.8,
-          "label": "medium",
+          "score": 90.2,
+          "label": "high",
           "breakdown": {
             "completeness": {
-              "score": 25.0,
+              "score": 100.0,
               "weight": "25%",
-              "reason": "Field data kurang lengkap (25%) — hasil analisis bisa tidak akurat"
+              "reason": "Data lengkap (100% required fields tersedia di semua tool)"
             },
             "tool_routing": {
               "score": 100.0,
               "weight": "20%",
-              "reason": "Tool yang dipanggil sesuai intent query (2/2 intent terpenuhi)"
+              "reason": "Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi)"
             },
             "complexity": {
-              "score": 60.0,
-              "weight": "15%",
-              "reason": "Query kompleks (trend/cohort/multi-step) — inherent uncertainty tinggi, perlu review"
-            },
-            "data_validation": {
-              "score": 50.0,
-              "weight": "15%",
-              "reason": "Satu anomali/nilai mencurigakan terdeteksi dalam data"
-            },
-            "freshness": {
               "score": 100.0,
               "weight": "15%",
-              "reason": "Data 0 jam yang lalu — sangat fresh"
+              "reason": "Query sederhana"
+            },
+            "data_validation": {
+              "score": 100.0,
+              "weight": "15%",
+              "reason": "Tidak ada anomali terdeteksi dalam data hasil tool"
+            },
+            "freshness": {
+              "score": 35.0,
+              "weight": "15%",
+              "reason": "Data 10 hari yang lalu — agak lama"
             },
             "dnc": {
               "score": 100.0,
               "weight": "10%",
-              "reason": "Semua angka di jawaban (1) dapat ditelusuri dari reasoning trace"
+              "reason": "Reasoning trace konsisten, tidak ada konflik atau anomali terdeteksi"
             }
           }
         }
       }
     },
     {
-      "task_id": "task_004",
-      "list_id": "list_002",
-      "task_name": "Client Report: Fashion_Brand_B Top Products Feb 24",
-      "description": "Agent: Budi | Prepare weekly client report on product performance",
-      "status": "open",
-      "date_created": "2026-02-25T10:00:00Z",
-      "date_due": "2026-02-25T14:00:00Z",
-      "assigned_to": "AI Agent",
-      "custom_fields": {
-        "Query Type": "Sales Performance",
-        "Brand": "Fashion_Brand_B",
-        "Date Range": "2026-02-24",
-        "Priority": "High",
-        "AI Confidence Score": null,
-        "Resolution Status": null
-      },
-      "comments": [],
-      "ai_response": null
-    },
-    {
       "task_id": "task_005",
       "list_id": "list_001",
       "task_name": "Which employees had the most transactions on Feb 24?",
       "description": "Agent: Siti | Performance tracking for staff management",
-      "status": "escalated",
+      "status": "in_review",
       "date_created": "2026-02-25T10:30:00Z",
       "date_due": "2026-02-25T11:00:00Z",
       "assigned_to": "AI Agent",
@@ -379,25 +485,19 @@
         "Brand": "Kopi_Brand_A",
         "Date Range": "2026-02-24",
         "Priority": "Low",
-        "AI Confidence Score": 69,
-        "Resolution Status": "AM Review Required"
+        "AI Confidence Score": 90,
+        "Resolution Status": "AM Review Required (Shadow Check FLAG)"
       },
       "ai_response_accuracy": "correct",
       "comments": [
         {
-          "comment_id": "812229cb",
+          "comment_id": "b997cb44",
           "author": "AI Agent",
-          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** Which employees had the most transactions on Feb 24?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"Which employees had the most transactions on Feb 24?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** ## Hasil Analisis\n\nPada tanggal **24 Feb 2026**, untuk toko **store_001 (Kopi_Brand_A)**, data menunjukkan:\n\n| Karyawan | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\n**Kesimpulan:** Hanya ada **1 karyawan** yang beroperasi pada tanggal tersebut, yaitu **Ahmad Barista** dengan **2 transaksi**. Ia secara otomatis menjadi karyawan dengan transaksi paling banyak pada hari tersebut.\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_employee_performance`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| Ahmad Barista | {'transactions': 2, 'total_revenue': 236500} |\n\n---\n### 📊 Confidence Score: 🟡 **69%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 0.0% | Field data kurang lengkap (0%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana (single metric, single date) — risiko rendah |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 60.0% | Data 7 hari yang lalu — masih relevan |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (1) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\n## Hasil Analisis\n\nPada tanggal **24 Feb 2026**, untuk toko **store_001 (Kopi_Brand_A)**, data menunjukkan:\n\n| Karyawan | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\n**Kesimpulan:** Hanya ada **1 karyawan** yang beroperasi pada tanggal tersebut, yaitu **Ahmad Barista** dengan **2 transaksi**. Ia secara otomatis menjadi karyawan dengan transaksi paling banyak pada hari tersebut.",
-          "timestamp": "2026-03-02T09:28:58.695096+00:00"
-        },
-        {
-          "comment_id": "e8f65a7d",
-          "author": "AI Agent",
-          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** Which employees had the most transactions on Feb 24?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"Which employees had the most transactions on Feb 24?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** Berdasarkan data untuk tanggal 24 Februari 2026 di Kopi_Brand_A (store_001), karyawan yang melakukan transaksi paling banyak adalah **Ahmad Barista** dengan **2 transaksi** (total revenue Rp236.500).\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_employee_performance`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| Ahmad Barista | {'transactions': 2, 'total_revenue': 236500} |\n\n---\n### 📊 Confidence Score: 🟡 **69%** `MEDIUM`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 0.0% | Field data kurang lengkap (0%) — hasil analisis bisa tidak akurat |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana (single metric, single date) — risiko rendah |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 60.0% | Data 7 hari yang lalu — masih relevan |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (1) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required\n\n---\n### 💬 Final Answer\n\nBerdasarkan data untuk tanggal 24 Februari 2026 di Kopi_Brand_A (store_001), karyawan yang melakukan transaksi paling banyak adalah **Ahmad Barista** dengan **2 transaksi** (total revenue Rp236.500).",
-          "timestamp": "2026-03-02T10:01:28.476686+00:00"
+          "text": "## 🤖 AI Agent Execution Summary\n\n**Task:** Which employees had the most transactions on Feb 24?\n\n---\n### 🧠 Thinking Process\n\n- 🔍 **Understand:** Memahami pertanyaan: \"Which employees had the most transactions on Feb 24?\"\n- ⚙️ **Reason:** [Iterasi 1] Menentukan tool yang tepat...\n- ⚙️ **Reason:** [Iterasi 2] Menentukan tool yang tepat...\n- 💭 **Thought:** Berdasarkan data dari **store_001** pada tanggal **24 Februari 2026**:\n\n| Employee | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\nHanya **Ahmad Barista** yang memiliki transaksi pada tanggal tersebut, dengan **2 transaksi** dan total pendapatan **Rp 236.500**.\n\n---\n### 🔧 Tool Calls (1 calls)\n\n**1. `get_employee_performance`** (`date`=`2026-02-24`, `store_id`=`store_001`)\n\n| Key | Value |\n|-----|-------|\n| Ahmad Barista | {'transactions': 2, 'total_revenue': 236500} |\n\n---\n### 📊 Confidence Score: 🟢 **90%** `HIGH`\n\n| Dimension | Weight | Score | Reason |\n|-----------|--------|-------|--------|\n| Completeness | 25% | 100.0% | Data lengkap (100% required fields tersedia di semua tool) |\n| Tool_routing | 20% | 100.0% | Tool yang dipanggil sesuai intent query (1/1 intent terpenuhi) |\n| Complexity | 15% | 100.0% | Query sederhana |\n| Data_validation | 15% | 100.0% | Tidak ada anomali terdeteksi dalam data hasil tool |\n| Freshness | 15% | 35.0% | Data 10 hari yang lalu — agak lama |\n| Dnc | 10% | 100.0% | Semua angka di jawaban (1) dapat ditelusuri dari reasoning trace |\n\n---\n**Resolution:** ⚠️ AM Review Required (Shadow Check FLAG)\n\n---\n### 💬 Final Answer\n\nBerdasarkan data dari **store_001** pada tanggal **24 Februari 2026**:\n\n| Employee | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\nHanya **Ahmad Barista** yang memiliki transaksi pada tanggal tersebut, dengan **2 transaksi** dan total pendapatan **Rp 236.500**.",
+          "timestamp": "2026-03-05T14:22:10.969304+00:00"
         }
       ],
-      "ai_response": "Berdasarkan data untuk tanggal 24 Februari 2026 di Kopi_Brand_A (store_001), karyawan yang melakukan transaksi paling banyak adalah **Ahmad Barista** dengan **2 transaksi** (total revenue Rp236.500).",
+      "ai_response": "Berdasarkan data dari **store_001** pada tanggal **24 Februari 2026**:\n\n| Employee | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\nHanya **Ahmad Barista** yang memiliki transaksi pada tanggal tersebut, dengan **2 transaksi** dan total pendapatan **Rp 236.500**.",
       "execution_trace": {
         "thinking_steps": [
           {
@@ -419,7 +519,7 @@
           },
           {
             "stage": "inner_monologue",
-            "message": "Berdasarkan data untuk tanggal 24 Februari 2026 di Kopi_Brand_A (store_001), karyawan yang melakukan transaksi paling banyak adalah **Ahmad Barista** dengan **2 transaksi** (total revenue Rp236.500)."
+            "message": "Berdasarkan data dari **store_001** pada tanggal **24 Februari 2026**:\n\n| Employee | Jumlah Transaksi | Total Revenue |\n|----------|------------------|---------------|\n| Ahmad Barista | 2 | Rp 236.500 |\n\nHanya **Ahmad Barista** yang memiliki transaksi pada tanggal tersebut, dengan **2 transaksi** dan total pendapatan **Rp 236.500**."
           }
         ],
         "tool_calls": [
@@ -438,13 +538,13 @@
           }
         ],
         "confidence": {
-          "score": 69.0,
-          "label": "medium",
+          "score": 90.2,
+          "label": "high",
           "breakdown": {
             "completeness": {
-              "score": 0.0,
+              "score": 100.0,
               "weight": "25%",
-              "reason": "Field data kurang lengkap (0%) — hasil analisis bisa tidak akurat"
+              "reason": "Data lengkap (100% required fields tersedia di semua tool)"
             },
             "tool_routing": {
               "score": 100.0,
@@ -454,7 +554,7 @@
             "complexity": {
               "score": 100.0,
               "weight": "15%",
-              "reason": "Query sederhana (single metric, single date) — risiko rendah"
+              "reason": "Query sederhana"
             },
             "data_validation": {
               "score": 100.0,
@@ -462,9 +562,9 @@
               "reason": "Tidak ada anomali terdeteksi dalam data hasil tool"
             },
             "freshness": {
-              "score": 60.0,
+              "score": 35.0,
               "weight": "15%",
-              "reason": "Data 7 hari yang lalu — masih relevan"
+              "reason": "Data 10 hari yang lalu — agak lama"
             },
             "dnc": {
               "score": 100.0,
@@ -650,6 +750,234 @@
       },
       "ai_response": null,
       "parent_task_id": "task_005"
+    },
+    {
+      "task_id": "esc_e48a1dd5",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] Revenue for yesterday (March 3, 2026)",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 52% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T06:13:30.923231+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_7a9ebf37",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was total revenue on March 3 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 61% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T06:21:04.008413+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_903ff661",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] How many new customers at Fashion_Brand_B on Feb 24?",
+      "description": "Parent: task_002 | Brand: Fashion_Brand_B\nAlasan eskalasi: Confidence score 51% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T16:55:56.366932+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Fashion_Brand_B",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_002"
+    },
+    {
+      "task_id": "esc_54889fea",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] Trend: Revenue comparison Jan 2026 vs Feb 2026 (so far)",
+      "description": "Parent: task_003 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 60% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T16:58:09.662675+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_003"
+    },
+    {
+      "task_id": "esc_9948b18a",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was the total revenue on February 24, 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 73% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T17:14:45.052141+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_9eed9114",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was total revenue on February 24, 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 73% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T17:25:01.415581+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_2868e719",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was total revenue on February 24, 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 73% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T17:32:55.195348+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_3cdd6fc1",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was total revenue on February 24, 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 68% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T17:42:58.126107+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_bdd30005",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was total revenue on March 3, 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 41% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-04T17:44:56.568838+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_debbca2d",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] What was the total revenue on February 24, 2026?",
+      "description": "Parent: task_001 | Brand: Kopi_Brand_A\nAlasan eskalasi: Confidence score 73% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-05T09:58:08.207839+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Kopi_Brand_A",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_001"
+    },
+    {
+      "task_id": "esc_906c5660",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] How many new customers at Fashion_Brand_B on Feb 24?",
+      "description": "Parent: task_002 | Brand: Fashion_Brand_B\nAlasan eskalasi: Confidence score 67% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-05T10:05:18.920227+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Fashion_Brand_B",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_002"
+    },
+    {
+      "task_id": "esc_eba34b5b",
+      "list_id": "list_001",
+      "task_name": "[ESKALASI] How many new customers at Fashion_Brand_B on Feb 24?",
+      "description": "Parent: task_002 | Brand: Fashion_Brand_B\nAlasan eskalasi: Confidence score 67% di bawah threshold 80%. Data tidak mencukupi untuk analisis yang diminta.",
+      "status": "open",
+      "date_created": "2026-03-05T14:16:00.462326+00:00",
+      "date_due": null,
+      "assigned_to": "AM Review",
+      "custom_fields": {
+        "Query Type": "Escalation",
+        "Brand": "Fashion_Brand_B",
+        "Priority": "Urgent",
+        "AI Confidence Score": null,
+        "Resolution Status": "AM Review Required"
+      },
+      "ai_response": null,
+      "parent_task_id": "task_002"
     }
   ],
   "query_examples_for_testing": [

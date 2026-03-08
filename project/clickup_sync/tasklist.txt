@@ -1,0 +1,36 @@
+ask List: ClickUp Function Call
+1. ClickUp Sync — Fetch Tasks dari ClickUp
+Implementasi fetch task dari ClickUp API: GET /team/{team_id}/task
+Parse custom fields dari setiap task: Brand, Date Range, Query Type
+Build query input object: { question, brand, date_range, query_type, task_id }
+Handle include_closed=true agar task yang sudah selesai ikut ter-fetch
+2. ClickUp Read Tools — State 3 (Data Source)
+3 tools untuk query project management:
+
+Tool	Parameter	Return
+get_project_status	project_id	progress %, per-task breakdown
+get_overdue_tasks	project_id | 'all'	task overdue + days late
+get_tasks_by_assignee	assignee, week, status_filter	semua task per orang
+3. ClickUp Write Tools — Semua State (Post-Answer)
+5 tools untuk update lifecycle task:
+
+Tool	Fungsi
+update_task	Set status + confidence score + AI response ke task
+create_task	Buat follow-up task jika confidence rendah
+get_task_details	Ambil detail task (custom fields, status)
+add_comment	Log reasoning/audit trail ke task
+assign_task	Assign task flagged/sensitive ke AM tertentu
+4. Response Update & Task Lifecycle
+Setelah AI generate answer → call update_task() dengan: confidence_score, response_text, data_source
+Call add_comment() dengan reasoning: tools apa yang dipanggil + confidence breakdown
+Status logic:
+≥95% → "ready"
+80–94% → "flagged"
+<80% → "flagged" high-priority
+PII/RBAC violation → "sensitive"
+5. Tool Schema Definition
+Buat file schema di folder tool-definitions/ → clickup-tools.yaml
+Format: OpenAPI/JSON schema
+6. Folder Structure yang Perlu Dibuat
+clickup-sync/       ← task fetch + response update logic (Stream B)
+tool-definitions/   ← clickup-tools.yaml schema
