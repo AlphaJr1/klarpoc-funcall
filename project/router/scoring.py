@@ -355,14 +355,38 @@ def calculate_confidence(
             data_validation_reason = f"{anomaly_count} anomali terdeteksi — data perlu diverifikasi{note}"
 
     # 5. Freshness (15%)
+    # Priority: date_range > date_created dari tool result > real-time fallback
     try:
         end_date_str = date_range.split(" - ")[-1].strip() if date_range else ""
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else datetime.now()
-        age_hours = (datetime.now() - end_date).total_seconds() / 3600
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else None
+        age_hours = (datetime.now() - end_date).total_seconds() / 3600 if end_date else None
     except (ValueError, AttributeError):
-        age_hours = 0
+        end_date_str = ""
+        age_hours = None
 
-    if age_hours <= 4:
+    # Jika tidak ada date_range, coba cari date_created dari hasil tool (epoch ms ClickUp)
+    if age_hours is None:
+        oldest_created_ms: int | float | None = None
+        for tc in tool_calls_log:
+            result = tc.get("result", [])
+            items = result if isinstance(result, list) else [result] if isinstance(result, dict) else []
+            for item in items:
+                dc = item.get("date_created")
+                if dc:
+                    try:
+                        dc_ms = int(dc)
+                        if oldest_created_ms is None or dc_ms < oldest_created_ms:
+                            oldest_created_ms = dc_ms
+                    except (ValueError, TypeError):
+                        pass
+        if oldest_created_ms is not None:
+            created_dt = datetime.fromtimestamp(oldest_created_ms / 1000.0)
+            age_hours = (datetime.now() - created_dt).total_seconds() / 3600
+            end_date_str = created_dt.strftime("%Y-%m-%d")
+
+    if age_hours is None:
+        freshness, freshness_reason = 100.0, "Data real-time — diambil langsung dari sistem"
+    elif age_hours <= 4:
         freshness, freshness_reason = 100.0, f"Data {age_hours:.0f} jam yang lalu — sangat fresh"
     elif age_hours <= 24:
         freshness, freshness_reason = 80.0, f"Data {age_hours:.0f} jam yang lalu — fresh (hari ini)"

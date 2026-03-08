@@ -459,6 +459,9 @@ def get_overdue_tasks(project_id: str) -> list[dict]:
                         "status": status,
                         "assignee": (t.get("assignees") or [{}])[0].get("username", ""),
                         "due_date": t.get("due_date"),
+                        "start_date": t.get("start_date"),
+                        "date_created": t.get("date_created"),
+                        "date_updated": t.get("date_updated"),
                         "days_overdue": days_overdue,
                     })
         overdue.sort(key=lambda x: x["days_overdue"], reverse=True)
@@ -490,6 +493,9 @@ def get_overdue_tasks(project_id: str) -> list[dict]:
                 "status": status,
                 "assignee": (t.get("assignees") or [{}])[0].get("username", ""),
                 "due_date": t.get("due_date"),
+                "start_date": t.get("start_date"),
+                "date_created": t.get("date_created"),
+                "date_updated": t.get("date_updated"),
                 "days_overdue": days_overdue,
             })
 
@@ -546,7 +552,9 @@ def get_tasks_by_assignee(assignee: str, week: str | None = None, status_filter:
                 "assignee": assignee,
                 "list_id": list_id,
                 "due_date": t.get("due_date"),
-                "week_filter": week,
+                "start_date": t.get("start_date"),
+                "date_created": t.get("date_created"),
+                "date_updated": t.get("date_updated"),
             })
 
     return result
