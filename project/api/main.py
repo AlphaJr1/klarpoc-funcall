@@ -218,6 +218,12 @@ def get_loyverse():
         return json.load(f)
 
 
+@app.get("/brands")
+def get_brands():
+    from router.config import BRAND_STORE_MAP
+    return {"brands": list(BRAND_STORE_MAP.keys())}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -25,8 +25,11 @@ paths:
                 type: object
                 properties:
                   project_id: { type: string }
+                  resolved_list_id: { type: string }
                   total_tasks: { type: integer }
                   completed_tasks: { type: integer }
+                  in_progress_tasks: { type: integer }
+                  todo_tasks: { type: integer }
                   progress_percent: { type: integer }
                   tasks:
                     type: array

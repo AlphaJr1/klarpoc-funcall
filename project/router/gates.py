@@ -12,6 +12,15 @@ def _load_states() -> dict:
         return yaml.safe_load(f)["states"]
 
 
+def get_tools_for_state(state: str, all_tools: list) -> list:
+    """Filter TOOLS list hanya ke tools yang diizinkan di state tersebut (dari states.yaml)."""
+    states = _load_states()
+    allowed = states.get(state, {}).get("tools", [])
+    if not allowed:
+        return all_tools  # fallback: semua tools jika state tidak dikenal
+    return [t for t in all_tools if t["function"]["name"] in allowed]
+
+
 def extract_or_clarify(client: OpenAI, question: str, today: str) -> dict:
     """
     LLM single-pass:
@@ -66,17 +75,26 @@ def extract_or_clarify(client: OpenAI, question: str, today: str) -> dict:
             if brand and date_range:
                 return {"result": "EXTRACTED", "brand": brand, "date_range": date_range}
 
-        # Fallback ke CLARIFY
+        # Fallback ke CLARIFY — pastikan slot brand selalu punya options dari brands.yaml
+        slots = data.get("slots", [])
+        brand_options = list(BRAND_STORE_MAP.keys())
+        for slot in slots:
+            if slot.get("label", "").lower() == "brand" and not slot.get("options"):
+                slot["options"] = brand_options
+        # Jika tidak ada slot sama sekali, inject default
+        if not slots:
+            slots = [{"label": "Brand", "options": brand_options}]
+
         return {
             "result": "CLARIFY",
-            "question": data.get("question", "Mohon lengkapi informasi berikut:"),
-            "slots": data.get("slots", []),
+            "question": data.get("question", "Brand mana yang dimaksud?"),
+            "slots": slots,
         }
     except Exception:
         return {
             "result": "CLARIFY",
-            "question": "Sistem tidak dapat menentukan konteks query. Mohon lengkapi:",
-            "slots": [],
+            "question": "Brand mana yang dimaksud?",
+            "slots": [{"label": "Brand", "options": list(BRAND_STORE_MAP.keys())}],
         }
 
 
@@ -196,10 +214,14 @@ def intent_classify(client: OpenAI, question: str) -> dict:
         return {
             "result": "CLASSIFIED",
             "state": state,
+            "state_desc": states[state].get("description", ""),
             "confidence": confidence,
             "reasoning": reasoning,
             "skip_brand_isolation": skip_brand,
         }
     except Exception as e:
-        return {"result": "CLASSIFIED", "state": "State 1", "confidence": 0.5,
+        states_dict = _load_states()
+        fallback_state = next(iter(states_dict), "State 1")
+        fallback_desc = states_dict.get(fallback_state, {}).get("description", "")
+        return {"result": "CLASSIFIED", "state": fallback_state, "state_desc": fallback_desc, "confidence": 0.5,
                 "reasoning": f"fallback: {e}", "skip_brand_isolation": False}

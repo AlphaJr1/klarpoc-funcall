@@ -125,20 +125,28 @@ def shadow_check(
     question: str,
     reasoning_trace: str,
     ai_response: str,
+    tool_calls_log: list | None = None,
 ) -> dict:
     shadow_client = OpenAI(api_key=client.api_key, base_url=client.base_url)
+    tool_calls_log = tool_calls_log or []
+    tools_summary = "\n".join(
+        f"- {tc['tool']}({tc.get('input', {})}): "
+        f"{str(tc.get('result', {}))[:2000]}"
+        for tc in tool_calls_log
+    ) or "- Tidak ada tool call dilakukan"
     prompt = (
         "Kamu adalah logic dan disclosure auditor untuk AI yang menjawab query data marketing.\n"
-        "Evaluasi dua hal berdasarkan query, reasoning trace, dan jawaban final:\n\n"
+        "Evaluasi dua hal berdasarkan query, tool calls yang dilakukan, reasoning trace, dan jawaban final:\n\n"
         f"QUERY: {question}\n"
-        f"REASONING TRACE: {reasoning_trace[:800]}\n"
-        f"FINAL ANSWER: {ai_response[:600]}\n\n"
+        f"TOOL CALLS EXECUTED:\n{tools_summary}\n"
+        f"REASONING TRACE: {reasoning_trace[:600]}\n"
+        f"FINAL ANSWER: {ai_response[:400]}\n\n"
         "Question 1 — Logic Check:\n"
-        "Apakah jawaban final secara logis mengikuti reasoning trace?\n\n"
+        "Apakah jawaban final secara logis mengikuti data dari tool calls dan reasoning trace?\n"
+        "CATATAN: Label iterasi seperti '[Iterasi 1] Menentukan tool yang tepat' adalah metadata proses, bukan indikasi masalah.\n\n"
         "Question 2 — Disclosure Check:\n"
-        "Apakah reasoning trace mengandung anomali, warning, flag, atau masalah "
-        "(nilai negatif, spike tidak wajar, data hilang, hasil tidak terduga) "
-        "yang TIDAK disebutkan atau diungkap dalam jawaban final?\n\n"
+        "Apakah tool calls atau reasoning trace mengandung anomali, warning, atau masalah "
+        "(nilai negatif, data hilang, error) yang TIDAK disebutkan dalam jawaban final?\n\n"
         "Jawab PERSIS dalam format ini (tidak ada teks lain):\n"
         "LOGIC: PASS atau FLAG: [alasan singkat]\n"
         "DISCLOSURE: PASS atau FLAG: [alasan singkat]\n"

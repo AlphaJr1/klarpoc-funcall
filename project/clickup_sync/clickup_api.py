@@ -432,8 +432,38 @@ def get_overdue_tasks(project_id: str) -> list[dict]:
     done_statuses = {"complete", "closed", "done"}
 
     if project_id == "all":
-        list_id = CLICKUP_LIST_ID
-        name_filter = None
+        # Scan semua list yang terdaftar
+        all_list_ids = {CLICKUP_LIST_ID}
+        all_list_ids.update(PROJECT_LIST_MAP.values())
+        overdue = []
+        seen_ids = set()
+        for lid in all_list_ids:
+            try:
+                tasks = _get_list_tasks(lid, include_closed=False)
+            except Exception:
+                continue
+            for t in tasks:
+                tid = t.get("id")
+                if tid in seen_ids:
+                    continue
+                status = t.get("status", {}).get("status", "").lower()
+                if status in done_statuses:
+                    continue
+                due = t.get("due_date")
+                if due and int(due) < now_ms:
+                    days_overdue = (now_ms - int(due)) // (1000 * 86400)
+                    seen_ids.add(tid)
+                    overdue.append({
+                        "task_id": tid,
+                        "task_name": t.get("name", ""),
+                        "status": status,
+                        "assignee": (t.get("assignees") or [{}])[0].get("username", ""),
+                        "due_date": t.get("due_date"),
+                        "days_overdue": days_overdue,
+                    })
+        overdue.sort(key=lambda x: x["days_overdue"], reverse=True)
+        return overdue
+
     elif project_id.strip().lstrip("-").isdigit():
         list_id = project_id
         name_filter = None

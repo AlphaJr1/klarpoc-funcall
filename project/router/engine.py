@@ -29,7 +29,7 @@ except Exception:
 from .config import OLLAMA_MODEL, OLLAMA_BASE_URL, ESCALATION_THRESHOLD, MAX_LLM_ITERATIONS, TASK_FIELD_MAP
 from .tools import TOOLS, execute_tool
 from .scoring import calculate_confidence, explain_confidence, shadow_check
-from .gates import extract_or_clarify, gate0_check, synthesize_query, intent_classify
+from .gates import extract_or_clarify, gate0_check, synthesize_query, intent_classify, get_tools_for_state
 from .prompts import build_system_prompt, build_user_prompt, build_summary_comment
 
 
@@ -138,7 +138,10 @@ def _post_process(
     t0: float,
     ordered_trace: list = None,
 ):
-    reasoning_trace = " ".join(s.get("message", "") for s in thinking_steps)
+    reasoning_trace = " ".join(
+        s.get("message", "") for s in thinking_steps
+        if s.get("stage") != "inner_monologue"
+    )
     ctx = {
         "task_id": task_id, "question": question, "brand": brand,
         "tool_calls_log": tool_calls_log, "thinking_steps": thinking_steps,
@@ -152,7 +155,7 @@ def _post_process(
 
     with ThreadPoolExecutor(max_workers=2) as ex:
         t_pp = time.perf_counter()
-        f_shadow  = ex.submit(shadow_check, client, question, reasoning_trace, ai_response)
+        f_shadow  = ex.submit(shadow_check, client, question, reasoning_trace, ai_response, tool_calls_log)
         f_explain = ex.submit(explain_confidence, client, question, tool_calls_log, confidence, date_range)
 
         try:
@@ -291,11 +294,12 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
     _logger.info(_ck("brand_resolution", t0, t_brand, f"result={brand_info}"))
 
     if brand_info is None:
+        from .config import BRAND_STORE_MAP
         yield {
             "event": "clarification_needed",
             "question": "Brand mana yang dimaksud?",
-            "slots": ["brand"],
-            "message": "Tidak dapat menentukan brand dari query. Mohon sebutkan nama brand secara eksplisit.",
+            "slots": [{"label": "Brand", "options": list(BRAND_STORE_MAP.keys())}],
+            "message": "Tidak dapat menentukan brand dari query. Mohon sebutkan nama brand.",
         }
         return
 
@@ -320,6 +324,11 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
             "message": f"Intent classifier: {intent.get('reasoning', '')}",
         }
         return
+
+    # Filter tools sesuai state aktif dari states.yaml
+    active_tools = get_tools_for_state(intent["state"], TOOLS)
+    _logger.info(_ck("tools_filtered", t0, t_intent,
+                     f"state={intent['state']} tools={[t['function']['name'] for t in active_tools]}"))
 
     # Extract date_range jika masih kosong
     if not date_range:
@@ -348,7 +357,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
 
     # ── Optimistic: gate0 + LLM iter 1 jalan PARALEL ─────────────────────────
     # 99% query = VALID, jadi LLM iter 1 biasanya langsung dipakai
-    user_content = build_user_prompt(question, brand, store_id, date_range)
+    user_content = build_user_prompt(question, brand, store_id, date_range, project_id=project_id)
     client = _make_client()
     messages_init = [
         {"role": "system", "content": build_system_prompt(store_id)},
@@ -367,7 +376,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
         r = client.chat.completions.create(
             model=OLLAMA_MODEL,
             messages=messages_init,
-            tools=TOOLS,
+            tools=active_tools,
             tool_choice="auto",
         )
         _logger.info(_ck("llm_call_iter_1", t0, t,
@@ -403,7 +412,16 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
     step_understanding = {
         "stage": "understanding",
         "message": f"Memahami pertanyaan: \"{question}\"",
-        "context": {"brand": brand, "store_id": store_id, "date_range": date_range},
+        "context": {
+            "brand": brand,
+            "store_id": store_id,
+            "date_range": date_range,
+            "state": intent["state"],
+            "state_desc": intent.get("state_desc", ""),
+            "state_confidence": f"{intent.get('confidence', 0):.0%}",
+            "state_reasoning": intent.get("reasoning", ""),
+            "allowed_tools": [t["function"]["name"] for t in active_tools],
+        },
     }
     thinking_steps.append(step_understanding)
     ordered_trace.append({"event": "thinking", **step_understanding})
@@ -451,7 +469,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
 
         t_llm = time.perf_counter()
         response = client.chat.completions.create(
-            model=OLLAMA_MODEL, messages=messages, tools=TOOLS, tool_choice="auto",
+            model=OLLAMA_MODEL, messages=messages, tools=active_tools, tool_choice="auto",
         )
         msg = response.choices[0].message
         finish_reason = response.choices[0].finish_reason

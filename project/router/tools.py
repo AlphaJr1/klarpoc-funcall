@@ -98,7 +98,7 @@ TOOLS = [
                 "properties": {
                     "project_id": {
                         "type": "string",
-                        "description": "ClickUp list_id project. Gunakan 'all' jika tidak diketahui.",
+                        "description": "ClickUp list_id project. WAJIB gunakan Project ID yang sudah disediakan di context. Jangan gunakan 'all'.",
                     },
                 },
                 "required": ["project_id"],
@@ -118,7 +118,7 @@ TOOLS = [
                 "properties": {
                     "project_id": {
                         "type": "string",
-                        "description": "ClickUp list_id project, atau 'all' untuk semua task.",
+                        "description": "ClickUp list_id project. WAJIB gunakan Project ID yang sudah disediakan di context. Jangan gunakan 'all'.",
                     },
                 },
                 "required": ["project_id"],

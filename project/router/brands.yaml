@@ -1,7 +1,7 @@
 brands:
   Kopi_Brand_A:
     store_id: store_001
-    project_id: proj_003
+    project_id: "901816314437"  # Klar_Lixus list (belum ada list khusus Kopi)
     aliases:
       - "Toko Kopi Bandung"
       - "Kopi Brand A"
@@ -10,18 +10,30 @@ brands:
 
   Fashion_Brand_B:
     store_id: store_002
-    project_id: proj_002
+    project_id: "901816546546"  # Fashion_Brand_B Q1 Campaign list
     aliases:
       - "Boutique Jakarta"
       - "Fashion Brand B"
       - "brand B"
       - "fashion brand"
+      - "Fashion_Brand_B Q1 Campaign"
+      - "Q1 Campaign"
 
   Restoran_Brand_C:
     store_id: store_003
-    project_id: proj_001
+    project_id: "901816314437"  # Klar_Lixus list (belum ada list khusus Restoran)
     aliases:
       - "Restoran Padang Surabaya"
       - "Restoran Brand C"
       - "brand C"
       - "restoran padang"
+
+  Klar_Lixus_PoC:
+    store_id: null
+    project_id: "901816546550"  # Klar-Lixus PoC Development list
+    aliases:
+      - "Klar-Lixus PoC"
+      - "Klar Lixus PoC"
+      - "klar poc"
+      - "PoC development"
+      - "Klar-Lixus PoC development project"

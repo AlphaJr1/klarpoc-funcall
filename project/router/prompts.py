@@ -7,16 +7,14 @@ def build_system_prompt(store_id: str) -> str:
     )
 
 
-def build_user_prompt(question: str, brand: str, store_id: str, date_range: str, **extra_ctx) -> str:
-    """
-    Template prompt user. Tambah context baru cukup lewat extra_ctx kwarg,
-    tanpa perlu ubah engine.py.
-    """
+def build_user_prompt(question: str, brand: str, store_id: str, date_range: str, project_id: str | None = None, **extra_ctx) -> str:
     lines = [
         f"Pertanyaan: {question}",
         f"Brand: {brand} | Store: {store_id}",
         f"Rentang tanggal: {date_range}",
     ]
+    if project_id:
+        lines.append(f"Project ID (gunakan sebagai parameter project_id pada ClickUp tools): {project_id}")
     for key, val in extra_ctx.items():
         if val:
             lines.append(f"{key}: {val}")
