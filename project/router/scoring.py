@@ -197,6 +197,8 @@ _INTENT_TOOL_MAP: list[tuple[list[str], list[str]]] = [
      ["get_employee_performance"]),
     (["range", "period", "rentang", "periode", "bulan", "minggu", "comparison", "compare"],
      ["get_date_range_metrics"]),
+    (["overdue", "terlambat", "task", "tasks", "project", "campaign", "deadline", "due"],
+     ["get_overdue_tasks", "get_project_status"]),
 ]
 
 
