@@ -54,7 +54,7 @@ def extract_or_clarify(client: OpenAI, question: str, today: str) -> dict:
     )
     try:
         resp = client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model="haiku",
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -124,7 +124,7 @@ def gate0_check(client: OpenAI, question: str, today: str) -> dict:
     )
     try:
         resp = client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model="haiku",
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -159,7 +159,7 @@ def synthesize_query(client: OpenAI, original_query: str, clarification: str) ->
     )
     try:
         resp = client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model="haiku",
             messages=[{"role": "user", "content": prompt}],
         )
         refined = resp.choices[0].message.content.strip().strip('"').strip("'")
@@ -191,7 +191,7 @@ def intent_classify(client: OpenAI, question: str) -> dict:
     )
     try:
         resp = client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model="haiku",
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()

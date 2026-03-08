@@ -1,0 +1,21 @@
+The current freshness logic in scoring.py:356-372 calculates freshness based on the requested date_range, not the actual data date returned:
+
+
+end_date_str = date_range.split(" - ")[-1].strip()  # uses the query's requested date
+age_hours = (datetime.now() - end_date).total_seconds() / 3600
+So if someone asks "Feb 24?" but Feb 24 data doesn't exist and the AI silently uses Feb 23, the freshness score would still reflect Feb 24 — incorrectly scoring it as fresh when it's actually stale + wrong date.
+
+The DNC Path 0 in scoring.py:27-44 does try to catch this:
+
+
+Checks if get_daily_summary errored on Feb 24
+AND get_date_range_metrics didn't cover Feb 24 either
+→ returns 40.0 score with "scope mismatch" reason
+But that only fires if there's a tool error logged. If the tool returns empty/null data and the AI just guesses from Feb 23 without a hard error, DNC Path 0 won't catch it.
+
+Correct behavior should be:
+
+Tool returns error/empty for Feb 24 → DNC Path 0 fires (scope mismatch, score 40)
+AI discloses "no data for Feb 24, using Feb 23" in response → Shadow Check Disclosure = PASS
+Freshness should be recalculated against Feb 23 (actual data date), not Feb 24
+The freshness scoring needs to reference the actual dates_with_data from the tool result, not the query's date_range. This is a gap Adrian should address.

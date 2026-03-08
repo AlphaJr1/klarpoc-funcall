@@ -33,11 +33,9 @@ from .gates import extract_or_clarify, gate0_check, synthesize_query, intent_cla
 from .prompts import build_system_prompt, build_user_prompt, build_summary_comment
 
 
-def _make_client() -> OpenAI:
-    return OpenAI(
-        api_key=os.environ.get("OLLAMA_API_KEY", ""),
-        base_url=f"{OLLAMA_BASE_URL}/v1",
-    )
+def _make_client():
+    from .llm import get_llm_client
+    return get_llm_client()
 
 
 def _get_task_field(task: dict, key: str, default: str = "") -> str:
@@ -127,6 +125,7 @@ def _post_process(
     task_id: str,
     question: str,
     brand: str,
+    store_id: str,
     tool_calls_log: list,
     thinking_steps: list,
     confidence: dict,
@@ -155,8 +154,8 @@ def _post_process(
 
     with ThreadPoolExecutor(max_workers=2) as ex:
         t_pp = time.perf_counter()
-        f_shadow  = ex.submit(shadow_check, client, question, reasoning_trace, ai_response, tool_calls_log)
-        f_explain = ex.submit(explain_confidence, client, question, tool_calls_log, confidence, date_range)
+        f_shadow  = ex.submit(shadow_check, client, question, reasoning_trace, ai_response, tool_calls_log, brand, store_id)
+        f_explain = ex.submit(explain_confidence, client, question, tool_calls_log, confidence, date_range, brand, store_id)
 
         try:
             shadow_result = f_shadow.result(timeout=30)
@@ -374,7 +373,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
     def _run_llm_iter1():
         t = time.perf_counter()
         r = client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model="sonnet",
             messages=messages_init,
             tools=active_tools,
             tool_choice="auto",
@@ -469,7 +468,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
 
         t_llm = time.perf_counter()
         response = client.chat.completions.create(
-            model=OLLAMA_MODEL, messages=messages, tools=active_tools, tool_choice="auto",
+            model="sonnet", messages=messages, tools=active_tools, tool_choice="auto",
         )
         msg = response.choices[0].message
         finish_reason = response.choices[0].finish_reason
@@ -532,7 +531,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
     bg_executor = ThreadPoolExecutor(max_workers=1)
     bg_executor.submit(
         _post_process,
-        client, task_id, question, brand,
+        client, task_id, question, brand, store_id,
         tool_calls_log, thinking_steps, confidence,
         confidence_score, resolution_status, ai_response, date_range,
         out_queue, t0, ordered_trace,

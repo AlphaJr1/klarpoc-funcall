@@ -45,7 +45,7 @@ def resolve_brand(query: str, client: OpenAI | None = None) -> dict | None:
         f"Respond only with: BRAND: [brand_id | uncertain]"
     )
     resp = client.chat.completions.create(
-        model=OLLAMA_MODEL,
+        model="haiku",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=20,
     )

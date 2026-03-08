@@ -24,22 +24,24 @@ def score_dnc(
     reasoning_lower = reasoning_trace.lower()
 
     # PATH 0: Scope alignment
-    failed_dates = [
-        t["input"].get("date")
-        for t in tool_calls_log
-        if t.get("tool") == "get_daily_summary"
-        and "error" in t.get("result", {})
-        and t.get("input", {}).get("date")
-    ]
+    failed_dates = []
+    for t in tool_calls_log:
+        if t.get("tool") == "get_daily_summary":
+            res = t.get("result", {})
+            inp_date = t.get("input", {}).get("date")
+            # Flag if errored or if data is empty (no revenue/transactions)
+            if inp_date and ("error" in res or (not res.get("total_transactions") and not res.get("total_revenue_idr"))):
+                failed_dates.append(inp_date)
+
     if failed_dates:
         all_covered = []
         for t in tool_calls_log:
             if t.get("tool") == "get_date_range_metrics":
                 all_covered.extend(t.get("result", {}).get("dates_with_data", []))
-        missing = [d for d in failed_dates if d not in all_covered]
+        missing = [str(d) for d in failed_dates if d not in all_covered]
         if missing:
             return 40.0, (
-                f"Scope mismatch: tanggal {', '.join(missing)} tidak ada datanya, "
+                f"Scope mismatch: tanggal {', '.join(missing)} tidak ada datanya (atau error), "
                 "tapi AI menjawab dengan data dari range berbeda tanpa menyebut keterbatasan ini"
             )
 
@@ -106,7 +108,7 @@ def score_dnc(
         )
         try:
             resp = client.chat.completions.create(
-                model=OLLAMA_MODEL,
+                model="haiku",
                 messages=[{"role": "user", "content": prompt}],
             )
             score_text = resp.choices[0].message.content.strip()
@@ -126,8 +128,10 @@ def shadow_check(
     reasoning_trace: str,
     ai_response: str,
     tool_calls_log: list | None = None,
+    brand: str = "",
+    store_id: str = "",
 ) -> dict:
-    shadow_client = OpenAI(api_key=client.api_key, base_url=client.base_url)
+    shadow_client = client
     tool_calls_log = tool_calls_log or []
     tools_summary = "\n".join(
         f"- {tc['tool']}({tc.get('input', {})}): "
@@ -138,6 +142,7 @@ def shadow_check(
         "Kamu adalah logic dan disclosure auditor untuk AI yang menjawab query data marketing.\n"
         "Evaluasi dua hal berdasarkan query, tool calls yang dilakukan, reasoning trace, dan jawaban final:\n\n"
         f"QUERY: {question}\n"
+        f"SYSTEM CONTEXT: Brand {brand} di sistem ini menggunakan ID {store_id}.\n"
         f"TOOL CALLS EXECUTED:\n{tools_summary}\n"
         f"REASONING TRACE: {reasoning_trace[:600]}\n"
         f"FINAL ANSWER: {ai_response[:400]}\n\n"
@@ -154,7 +159,7 @@ def shadow_check(
     )
     try:
         resp = shadow_client.chat.completions.create(
-            model=OLLAMA_MODEL,  # pakai model yang sama, bukan 120B
+            model="haiku",  # pakai model yang sama, bukan 120B
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -182,14 +187,14 @@ def shadow_check(
 
 
 _TOOL_EXPECTED_FIELDS: dict[str, list[str]] = {
-    "get_daily_summary":       ["total_revenue", "total_transactions", "average_order_value"],
+    "get_daily_summary":       ["total_revenue_idr", "total_transactions"],
     "get_date_range_metrics":  ["total_revenue_idr", "total_transactions"],
     # get_top_products return list → cek via _is_nonempty_list di calculate_confidence
     # get_employee_performance return dict with employee names as keys → cek via len > 0
 }
 
 _INTENT_TOOL_MAP: list[tuple[list[str], list[str]]] = [
-    (["revenue", "pendapatan", "sales", "penjualan", "omzet", "pemasukan"],
+    (["revenue", "pendapatan", "sales", "penjualan", "omzet", "pemasukan", "customer", "customers", "pelanggan", "pembeli"],
      ["get_daily_summary", "get_date_range_metrics"]),
     (["produk", "product", "terlaris", "top", "item", "menu"],
      ["get_top_products"]),
@@ -355,47 +360,67 @@ def calculate_confidence(
             data_validation_reason = f"{anomaly_count} anomali terdeteksi — data perlu diverifikasi{note}"
 
     # 5. Freshness (15%)
-    # Priority: date_range > date_created dari tool result > real-time fallback
-    try:
-        end_date_str = date_range.split(" - ")[-1].strip() if date_range else ""
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else None
-        age_hours = (datetime.now() - end_date).total_seconds() / 3600 if end_date else None
-    except (ValueError, AttributeError):
-        end_date_str = ""
-        age_hours = None
+    # Ambil actual date dari data yang direturn tools
+    actual_dates = []
+    for tc in tool_calls_log:
+        res = tc.get("result", {})
+        if isinstance(res, dict):
+            if "date" in res and res["date"]:
+                actual_dates.append(res["date"])
+            if "dates_with_data" in res and isinstance(res["dates_with_data"], list) and res["dates_with_data"]:
+                actual_dates.append(res["dates_with_data"][-1]) # Ambil tanggal terakhir
+            # Kalau return error/empty
+        elif isinstance(res, list):
+            # check list items for date?
+            pass
 
-    # Jika tidak ada date_range, coba cari date_created dari hasil tool (epoch ms ClickUp)
-    if age_hours is None:
-        oldest_created_ms: int | float | None = None
+    actual_latest_date_str = actual_dates[-1] if actual_dates else ""
+    requested_end_date = date_range.split(" - ")[-1].strip() if date_range else ""
+    
+    is_historical = False
+    if requested_end_date:
+        try:
+            req_dt = datetime.strptime(requested_end_date, "%Y-%m-%d")
+            # Convert both to date to compare without time
+            if req_dt.date() < datetime.now().date():
+                is_historical = True
+        except ValueError:
+            pass
+
+    if is_historical:
+        freshness, freshness_reason = 100.0, f"Data historis ({requested_end_date}) tidak perlu realtime (Freshness 100%)"
+    else:
+        # Jika bukan data historis (data live / hari ini), cek timestamp dari tool_result
+        age_hours = None
+        latest_created_ms: int | float | None = None
         for tc in tool_calls_log:
             result = tc.get("result", [])
             items = result if isinstance(result, list) else [result] if isinstance(result, dict) else []
             for item in items:
-                dc = item.get("date_created")
+                dc = item.get("date_created") or item.get("data_as_of")
                 if dc:
                     try:
                         dc_ms = int(dc)
-                        if oldest_created_ms is None or dc_ms < oldest_created_ms:
-                            oldest_created_ms = dc_ms
+                        if latest_created_ms is None or dc_ms > latest_created_ms:
+                            latest_created_ms = dc_ms
                     except (ValueError, TypeError):
                         pass
-        if oldest_created_ms is not None:
-            created_dt = datetime.fromtimestamp(oldest_created_ms / 1000.0)
+        if latest_created_ms is not None:
+            created_dt = datetime.fromtimestamp(latest_created_ms / 1000.0)
             age_hours = (datetime.now() - created_dt).total_seconds() / 3600
-            end_date_str = created_dt.strftime("%Y-%m-%d")
-
-    if age_hours is None:
-        freshness, freshness_reason = 100.0, "Data real-time — diambil langsung dari sistem"
-    elif age_hours <= 4:
-        freshness, freshness_reason = 100.0, f"Data {age_hours:.0f} jam yang lalu — sangat fresh"
-    elif age_hours <= 24:
-        freshness, freshness_reason = 80.0, f"Data {age_hours:.0f} jam yang lalu — fresh (hari ini)"
-    elif age_hours <= 168:
-        freshness, freshness_reason = 60.0, f"Data {age_hours / 24:.0f} hari yang lalu — masih relevan"
-    elif age_hours <= 720:
-        freshness, freshness_reason = 35.0, f"Data {age_hours / 24:.0f} hari yang lalu — agak lama"
-    else:
-        freshness, freshness_reason = 10.0, f"Data {age_hours / 24:.0f} hari yang lalu — historical"
+        
+        if age_hours is None:
+            freshness, freshness_reason = 100.0, "Data real-time — diambil langsung dari sistem"
+        elif age_hours <= 4:
+            freshness, freshness_reason = 100.0, f"Data {age_hours:.0f} jam yang lalu — sangat fresh"
+        elif age_hours <= 24:
+            freshness, freshness_reason = 80.0, f"Data {age_hours:.0f} jam yang lalu — fresh (hari ini)"
+        elif age_hours <= 168:
+            freshness, freshness_reason = 60.0, f"Data {age_hours / 24:.0f} hari yang lalu — masih relevan"
+        elif age_hours <= 720:
+            freshness, freshness_reason = 35.0, f"Data {age_hours / 24:.0f} hari yang lalu — agak lama"
+        else:
+            freshness, freshness_reason = 10.0, f"Data {age_hours / 24:.0f} hari yang lalu — historical"
 
     # 6. DNC (10%)
     dnc, dnc_reason = score_dnc(
@@ -444,6 +469,8 @@ def explain_confidence(
     tool_calls_log: list,
     confidence: dict,
     date_range: str,
+    brand: str = "",
+    store_id: str = "",
 ) -> dict:
     tools_summary = "\n".join(
         f"- {tc['tool']}({list(tc.get('input', {}).keys())}): "
@@ -459,7 +486,8 @@ def explain_confidence(
     prompt = (
         f"Kamu adalah AI analyst. Berikan penjelasan DETAIL per-faktor mengapa skor confidence seperti ini.\n\n"
         f"QUERY: {question}\n"
-        f"DATE RANGE: {date_range}\n\n"
+        f"DATE RANGE: {date_range}\n"
+        f"SYSTEM CONTEXT: Untuk query ini berkaitan dengan brand {brand} yang di mapping dengan store_id {store_id}.\n\n"
         f"TOOL CALLS & HASIL:\n{tools_summary}\n\n"
         f"CONFIDENCE BREAKDOWN:\n{factor_list}\n\n"
         f"TOTAL SCORE: {confidence['score']}% ({confidence['label']})\n\n"
@@ -472,7 +500,7 @@ def explain_confidence(
 
     try:
         resp = client.chat.completions.create(
-            model=OLLAMA_MODEL,
+            model="haiku",
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
