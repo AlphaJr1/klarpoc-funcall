@@ -203,9 +203,15 @@ async def run_task(task_id: str, force: bool = False, body: RunTaskBody = RunTas
             if event is None:
                 break
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-
+    return StreamingResponse(
+        event_stream(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 class SubmitTaskBody(BaseModel):
@@ -274,8 +280,8 @@ def chat_task_creation(body: ChatTaskMessage):
         '  {"status": "clarify", "message": "...", "missing_fields": ["brand", "date_range"], '
         '"options": {"brand": ["Kopi_Brand_A", "Fashion_Brand_B"], "date_range": ["2026-01-01 to 2026-01-31", "Minggu lalu"]}}\n'
         "- Setelah user menjawab clarification, gabungkan answer dengan context sebelumnya.\n"
-        "- Selalu gunakan Bahasa Indonesia yang baik dan benar untuk pesan ke user.\n"
-        "- DILARANG KERAS menggunakan karakter Cyrillic (Rusia), Mandarin, atau bahasa asing lainnya.\n"
+        "- Selalu gunakan Bahasa Indonesia yang baik dan benar untuk pesan ke user. JANGAN PERNAH MENGGUNAKAN BAHASA MANDARIN/CHINESE (Contoh: 进行数据, 请问, dll).\n"
+        "- DILARANG KERAS menggunakan karakter Cyrillic (Rusia), Mandarin, atau aksara selain Latin.\n"
         "- brand harus PERSIS sesuai nama dalam daftar brand yang tersedia.\n"
         "- Respond JSON only, no other text."
     )

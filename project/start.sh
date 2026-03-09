@@ -17,6 +17,15 @@ rotate_log() {
     fi
 }
 
+free_port() {
+    local port=$1
+    local pid=$(lsof -ti :$port)
+    if [ ! -z "$pid" ]; then
+        echo "Port $port is in use by PID(s): $pid. Killing..."
+        kill -9 $pid
+    fi
+}
+
 BACKEND_PY_LOG="$LOG_DIR/backend_api.log"
 BACKEND_GO_LOG="$LOG_DIR/backend_go.log"
 FRONTEND_LOG="$LOG_DIR/frontend_ui.log"
@@ -24,15 +33,22 @@ FRONTEND_LOG="$LOG_DIR/frontend_ui.log"
 echo "=============== STARTING SERVICES ==============="
 
 # 1. Python Backend (FastAPI) - port 8000
+free_port 8000
 rotate_log "$BACKEND_PY_LOG"
 echo "Starting Python Backend (FastAPI)..."
 cd "$PROJECT_DIR"
-../.venv/bin/python3 -m pip install -q fastapi uvicorn python-dotenv openai pydantic requests
+if [ ! -d "../.venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv ../.venv
+fi
+../.venv/bin/python3 -m ensurepip --upgrade > /dev/null 2>&1
+../.venv/bin/python3 -m pip install -q fastapi uvicorn python-dotenv openai pydantic requests pyyaml
 nohup ../.venv/bin/python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 > "$BACKEND_PY_LOG" 2>&1 &
 echo $! > "$LOG_DIR/backend_py.pid"
 echo "Python Backend started [PID: $(cat $LOG_DIR/backend_py.pid)]. Log: $BACKEND_PY_LOG"
 
 # 2. Go Backend (Gin) - port 8080
+free_port 8080
 rotate_log "$BACKEND_GO_LOG"
 echo "Starting Go Backend (Gin)..."
 cd "$PROJECT_DIR/go-api"
@@ -41,6 +57,7 @@ echo $! > "$LOG_DIR/backend_go.pid"
 echo "Go Backend started [PID: $(cat $LOG_DIR/backend_go.pid)]. Log: $BACKEND_GO_LOG"
 
 # 3. Frontend (Next.js)
+free_port 3000
 rotate_log "$FRONTEND_LOG"
 echo "Starting Frontend (Next.js)..."
 cd "$PROJECT_DIR/ui"
@@ -50,23 +67,9 @@ echo $! > "$LOG_DIR/frontend.pid"
 echo "Frontend started [PID: $(cat $LOG_DIR/frontend.pid)]. Log: $FRONTEND_LOG"
 
 
-# 4. Tunneling Frontend (Gratis)
-LT_FRONTEND_LOG="$LOG_DIR/lt_frontend.log"
-rotate_log "$LT_FRONTEND_LOG"
-
-echo "Mulai Tunneling Frontend..."
-nohup npx localtunnel --port 3000 > "$LT_FRONTEND_LOG" 2>&1 &
-echo $! > "$LOG_DIR/lt_frontend.pid"
-
-echo "Tunggu sebentar untuk mengambil URL Public Frontend..."
-sleep 3
-
 echo "================================================="
 echo "Services Local:"
 echo "  Python API  -> http://localhost:8000"
 echo "  Go API      -> http://localhost:8080"
 echo "  Frontend    -> http://localhost:3000"
-echo "-------------------------------------------------"
-echo "Public URL (Frontend Only):"
-echo "  Frontend    -> $(grep -o 'https://.*' "$LT_FRONTEND_LOG" || echo "Cek $LT_FRONTEND_LOG")"
 echo "================================================="

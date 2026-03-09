@@ -5,6 +5,26 @@ Mapping: ClickUp task → internal schema (kompatibel dengan clickup_tools.py)
 import os
 import requests
 import json
+import time
+
+def _request_with_retry(method, url, **kwargs):
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            r = requests.request(method, url, **kwargs)
+            if r.status_code == 429: # Rate limit
+                time.sleep(2 * (attempt + 1))
+                continue
+            r.raise_for_status()
+            return r
+        except requests.exceptions.RequestException as e:
+            if attempt == max_retries - 1:
+                if 'raise_for_status' not in str(type(e)):
+                    raise
+            time.sleep(1)
+    return requests.request(method, url, **kwargs)
+
+
 import uuid
 from datetime import datetime, timezone
 
@@ -133,7 +153,7 @@ def _map_task(t: dict, state: dict | None = None) -> dict:
 def get_all_tasks() -> list[dict]:
     """Fetch semua task termasuk closed/complete."""
     url = f"{_BASE}/list/{CLICKUP_LIST_ID}/task?archived=false&page=0&include_closed=true"
-    r = requests.get(url, headers=_headers(), timeout=15)
+    r = _request_with_retry("get", url, headers=_headers(), timeout=15)
     r.raise_for_status()
     st = _load_ai_state()
     return [_map_task(t, st.get(t["id"])) for t in r.json().get("tasks", [])]
@@ -145,7 +165,7 @@ def get_open_tasks() -> list[dict]:
 
 def get_task_by_id(task_id: str) -> dict | None:
     url = f"{_BASE}/task/{task_id}"
-    r = requests.get(url, headers=_headers(), timeout=10)
+    r = _request_with_retry("get", url, headers=_headers(), timeout=10)
     if r.status_code == 404:
         return None
     r.raise_for_status()
@@ -156,7 +176,7 @@ def get_task_by_id(task_id: str) -> dict | None:
 def _update_status(task_id: str, internal_status: str):
     cu_status = STATUS_MAP.get(internal_status, "in progress")
     url = f"{_BASE}/task/{task_id}"
-    requests.put(url, headers=_headers(), json={"status": cu_status}, timeout=10)
+    _request_with_retry("put", url, headers=_headers(), json={"status": cu_status}, timeout=10)
 
 
 def mark_in_progress(task_id: str) -> dict:
@@ -178,7 +198,7 @@ def reset_task(task_id: str) -> dict:
     import time
     for _ in range(3):
         try:
-            requests.put(url, headers=_headers(),
+            _request_with_retry("put", url, headers=_headers(),
                          json={"status": "to do", "description": ""},
                          timeout=30)
             break
@@ -186,9 +206,9 @@ def reset_task(task_id: str) -> dict:
             time.sleep(1)
     # Hapus semua comment via list + delete
     try:
-        coms = requests.get(f"{url}/comment", headers=_headers(), timeout=10).json()
+        coms = _request_with_retry("get", f"{url}/comment", headers=_headers(), timeout=10).json()
         for c in coms.get("comments", []):
-            requests.delete(f"{_BASE}/comment/{c['id']}", headers=_headers(), timeout=5)
+            _request_with_retry("delete", f"{_BASE}/comment/{c['id']}", headers=_headers(), timeout=5)
     except Exception:
         pass
         
@@ -222,13 +242,13 @@ def update_task_fields(task_id: str, fields: dict) -> dict:
 
     url = f"{_BASE}/task/{task_id}"
     if payload:
-        r = requests.put(url, headers=_headers(), json=payload, timeout=10)
+        r = _request_with_retry("put", url, headers=_headers(), json=payload, timeout=10)
         r.raise_for_status()
 
     # Custom fields via dedicated endpoint
     if "custom_fields" in fields:
         for cf_id, cf_val in fields["custom_fields"].items():
-            requests.post(
+            _request_with_retry("post",
                 f"{url}/field/{cf_id}",
                 headers=_headers(),
                 json={"value": cf_val},
@@ -282,7 +302,7 @@ def get_task_details(task_id: str) -> dict | None:
 def assign_task(task_id: str, assignee_id: str) -> dict:
     """Write tool: assign task ke user tertentu via ClickUp API."""
     url = f"{_BASE}/task/{task_id}"
-    r = requests.put(url, headers=_headers(), json={"assignees": {"add": [int(assignee_id)]}}, timeout=10)
+    r = _request_with_retry("put", url, headers=_headers(), json={"assignees": {"add": [int(assignee_id)]}}, timeout=10)
     r.raise_for_status()
     return {"task_id": task_id, "assigned_to": assignee_id}
 
@@ -290,7 +310,7 @@ def assign_task(task_id: str, assignee_id: str) -> dict:
 def add_comment(task_id: str, comment: str) -> dict:
     url = f"{_BASE}/task/{task_id}/comment"
     try:
-        r = requests.post(url, headers=_headers(),
+        r = _request_with_retry("post", url, headers=_headers(),
                           json={"comment_text": comment, "notify_all": False}, timeout=10)
     except Exception:
         pass
@@ -319,7 +339,7 @@ def add_comment(task_id: str, comment: str) -> dict:
 def submit_task(task_id: str, ai_summary: str) -> dict:
     """AM submit: set status complete + simpan summary ke description ClickUp."""
     url = f"{_BASE}/task/{task_id}"
-    requests.put(url, headers=_headers(),
+    _request_with_retry("put", url, headers=_headers(),
                  json={"status": "complete", "description": ai_summary}, timeout=10)
     add_comment(task_id, "[SUBMITTED] AM telah approve dan submit jawaban AI ke ClickUp.")
     
@@ -348,7 +368,7 @@ def create_task(
         "priority": prio_map.get(priority, 3),
         "status": "to do",
     }
-    r = requests.post(url, headers=_headers(), json=payload, timeout=10)
+    r = _request_with_retry("post", url, headers=_headers(), json=payload, timeout=10)
     r.raise_for_status()
     return _map_task(r.json())
 
@@ -361,7 +381,7 @@ def create_escalation_task(parent_task_id: str, question: str, brand: str, reaso
         "priority": 1,  # urgent
         "status": "to do",
     }
-    r = requests.post(url, headers=_headers(), json=payload, timeout=10)
+    r = _request_with_retry("post", url, headers=_headers(), json=payload, timeout=10)
     r.raise_for_status()
     return _map_task(r.json())
 
@@ -387,7 +407,7 @@ def _resolve_list_id(project_id: str) -> str:
 def _get_list_tasks(list_id: str, include_closed: bool = True) -> list[dict]:
     resolved = _resolve_list_id(list_id)
     url = f"{_BASE}/list/{resolved}/task?archived=false&include_closed={str(include_closed).lower()}"
-    r = requests.get(url, headers=_headers(), timeout=15)
+    r = _request_with_retry("get", url, headers=_headers(), timeout=15)
     r.raise_for_status()
     return r.json().get("tasks", [])
 
