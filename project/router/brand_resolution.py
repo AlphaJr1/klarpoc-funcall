@@ -42,7 +42,8 @@ def resolve_brand(query: str, client: OpenAI | None = None) -> dict | None:
         f"If unclear, return exactly: BRAND: uncertain\n\n"
         f"Brands:\n{brand_list}\n\n"
         f"Query: \"{query}\"\n\n"
-        f"Respond only with: BRAND: [brand_id | uncertain]"
+        f"Respond only with: BRAND: [brand_id | uncertain]\n"
+        f"IMPORTANT: DO NOT USE CHINESE CHARACTERS."
     )
     resp = client.chat.completions.create(
         model="haiku",

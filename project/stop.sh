@@ -46,13 +46,13 @@ case "$TARGET" in
         stop_service "Go Backend" "$LOG_DIR/backend_go.pid" 8080 "go-api/cmd/api/main.go"
         ;;
     frontend)
-        stop_service "Frontend" "$LOG_DIR/frontend.pid" "" "next dev"
+        stop_service "Frontend" "$LOG_DIR/frontend.pid" 3000 "next"
         rm -f "$PROJECT_DIR/ui/.next/dev/lock"
         ;;
     all|*)
         stop_service "Python Backend" "$LOG_DIR/backend_py.pid" 8000 "uvicorn api.main"
         stop_service "Go Backend" "$LOG_DIR/backend_go.pid" 8080 "go-api/cmd/api/main.go"
-        stop_service "Frontend" "$LOG_DIR/frontend.pid" "" "next dev"
+        stop_service "Frontend" "$LOG_DIR/frontend.pid" 3000 "next"
         rm -f "$PROJECT_DIR/ui/.next/dev/lock"
         ;;
 esac

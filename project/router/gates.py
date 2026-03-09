@@ -49,12 +49,13 @@ def extract_or_clarify(client: OpenAI, question: str, today: str) -> dict:
         "Add any brand name mentioned in the query as first option even if not in the known list.\n"
         "- For date: suggest 2-4 concrete absolute date options (YYYY-MM-DD) inferred from context "
         "(e.g. 'yesterday' = specific date, 'last week' = range). Include a 'Custom range' option if needed.\n"
+        "- CRITICAL RULE FOR DATES: Beware of ambiguous short dates like 'Feb 24' or 'Jan 25'. The AI often misinterprets this as 'February 2024'. It could mean 'tanggal 24 Februari' (date) or 'bulan Februari 2024' (month and year). If the user says 'Feb 24', you MUST assume it is ambiguous and return CLARIFY. The clarification question MUST explicitly ask if they mean the DATE (e.g., 24 Feb) or the YEAR (e.g., Feb 2024), and provide them as options.\n"
         "- Do NOT hardcode or list all brands blindly. Be smart — only suggest what's contextually relevant.\n"
-        "- Respond JSON only, no other text."
+        "- Respond JSON only, no other text. VERY IMPORTANT: DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll). Use Indonesian for any text intended for the user (like questions/labels)."
     )
     try:
         resp = client.chat.completions.create(
-            model="haiku",
+            model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -103,18 +104,22 @@ def extract_or_clarify(client: OpenAI, question: str, today: str) -> dict:
 def gate0_check(client: OpenAI, question: str, today: str) -> dict:
     prompt = (
         "System: You are a query intent validator for a marketing data AI.\n\n"
-        "Given the query and today's date, check for HARD contradictions only:\n"
+        "Given the query and today's date, check for HARD contradictions or severe ambiguity only:\n"
         "- Date references that conflict with each other\n"
         "  (e.g., \"yesterday\" vs. an explicit date that does not match yesterday)\n"
         "- Explicit date ranges that are impossible\n"
         "  (e.g., a future date range when the data cannot exist yet)\n"
-        "- Scope references that directly contradict each other\n\n"
+        "- Scope references that directly contradict each other\n"
+        "- Ambiguous date formats that have multiple valid interpretations\n"
+        "  (e.g., \"Feb 24\" or \"Maret 25\"). By default, AI often assumes 'Feb 2024', but humans often mean '24 Feb [Current Year]'.\n"
+        "  If you see an ambiguous date like 'Feb 24', you MUST return CLARIFY and ask the user explicitly: "
+        "  \"Apakah yang Anda maksud adalah tanggal 24 Februari atau bulan Februari tahun 2024?\" and provide the options.\n\n"
         "Do NOT flag soft ambiguity or questions answerable with reasonable defaults.\n"
-        "Only flag when the contradiction would produce two meaningfully different answers\n"
+        "Only flag when the contradiction or ambiguity would produce two meaningfully different answers\n"
         "and there is no way to pick one without asking the user.\n\n"
         f"Today's date: {today}\n"
         f"Query: {question}\n\n"
-        "If CLARIFY is needed, also provide 2-4 concrete options for the user to pick from.\n"
+        "If CLARIFY is needed, also provide 2-4 concrete options for the user to pick from. Use ONLY Indonesian language. DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll).\n"
         "Respond in this exact format (JSON only, no other text):\n"
         '{\"result\": \"VALID\"}\n'
         "or\n"
@@ -124,7 +129,7 @@ def gate0_check(client: OpenAI, question: str, today: str) -> dict:
     )
     try:
         resp = client.chat.completions.create(
-            model="haiku",
+            model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -155,11 +160,11 @@ def synthesize_query(client: OpenAI, original_query: str, clarification: str) ->
         "unambiguous question that incorporates the clarification.\n\n"
         f"Original query: {original_query}\n"
         f"User clarification: {clarification}\n\n"
-        "Return ONLY the refined query — one sentence, no explanation, no quotes."
+        "Return ONLY the refined query — one sentence, no explanation, no quotes. Must be in Indonesian Language. DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll)."
     )
     try:
         resp = client.chat.completions.create(
-            model="haiku",
+            model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
         refined = resp.choices[0].message.content.strip().strip('"').strip("'")
@@ -185,13 +190,18 @@ def intent_classify(client: OpenAI, question: str) -> dict:
         f"Classify this query into exactly one state.\n"
         f'Query: "{question}"\n\n'
         f"States:\n{states_prompt}\n\n"
-        f'Return JSON: {{"state": "{state_names}", "confidence": 0.0-1.0, "reasoning": "one sentence"}}\n'
-        'If confidence < 0.7, return {"state": "unknown", "confidence": ..., "reasoning": "..."}\n'
-        "Respond JSON only, no other text."
+        "If the query is highly ambiguous and could equally apply to multiple states "
+        "(e.g., 'how is X doing?' could be Sales performance or Project Management progress), "
+        "you MUST ask the user to clarify.\n"
+        'Return JSON: {"result": "CLARIFY", "question": "Apakah Anda ingin melihat data penjualan atau progress project?", "options": ["Data Penjualan", "Progress Project"], "reasoning": "query is ambiguous"}\n\n'
+        "If the query clearly belongs to one state, return JSON:\n"
+        f'{{"result": "CLASSIFIED", "state": "{state_names}", "confidence": 0.0-1.0, "reasoning": "one sentence"}}\n'
+        'If confidence < 0.7, still return CLARIFY.\n'
+        "Respond JSON only, no other text. Use ONLY Indonesian Language for any explanations/questions. DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll)."
     )
     try:
         resp = client.chat.completions.create(
-            model="haiku",
+            model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -203,12 +213,29 @@ def intent_classify(client: OpenAI, question: str) -> dict:
         start, end = text.find("{"), text.rfind("}") + 1
         data = json.loads(text[start:end]) if start >= 0 and end > start else {}
 
+        if data.get("result") == "CLARIFY":
+            return {
+                "result": "CLARIFY",
+                "state": "unknown",
+                "confidence": data.get("confidence", 0.0),
+                "reasoning": data.get("reasoning", ""),
+                "question": data.get("question", "Mohon klarifikasi topik pertanyaan Anda:"),
+                "options": data.get("options", [states[s]["label"] for s in states])
+            }
+
         state = data.get("state", "unknown")
         confidence = float(data.get("confidence", 0.0))
         reasoning = data.get("reasoning", "")
 
         if state == "unknown" or confidence < 0.7 or state not in states:
-            return {"result": "CLARIFY", "state": "unknown", "confidence": confidence, "reasoning": reasoning}
+            return {
+                "result": "CLARIFY",
+                "state": "unknown",
+                "confidence": confidence,
+                "reasoning": reasoning,
+                "question": "Query kurang jelas, mohon klarifikasi topik yang ingin ditanyakan:",
+                "options": [states[s]["label"] for s in states]
+            }
 
         skip_brand = states[state].get("skip_brand_isolation", False)
         return {

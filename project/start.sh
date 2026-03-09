@@ -27,8 +27,8 @@ echo "=============== STARTING SERVICES ==============="
 rotate_log "$BACKEND_PY_LOG"
 echo "Starting Python Backend (FastAPI)..."
 cd "$PROJECT_DIR"
-../.venv/bin/python3.14 -m pip install -q fastapi uvicorn python-dotenv openai pydantic requests
-nohup ../.venv/bin/python3.14 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 > "$BACKEND_PY_LOG" 2>&1 &
+../.venv/bin/python3 -m pip install -q fastapi uvicorn python-dotenv openai pydantic requests
+nohup ../.venv/bin/python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 > "$BACKEND_PY_LOG" 2>&1 &
 echo $! > "$LOG_DIR/backend_py.pid"
 echo "Python Backend started [PID: $(cat $LOG_DIR/backend_py.pid)]. Log: $BACKEND_PY_LOG"
 
@@ -45,13 +45,28 @@ rotate_log "$FRONTEND_LOG"
 echo "Starting Frontend (Next.js)..."
 cd "$PROJECT_DIR/ui"
 npm install --silent
-nohup npm run dev > "$FRONTEND_LOG" 2>&1 &
+nohup npm start > "$FRONTEND_LOG" 2>&1 &
 echo $! > "$LOG_DIR/frontend.pid"
 echo "Frontend started [PID: $(cat $LOG_DIR/frontend.pid)]. Log: $FRONTEND_LOG"
 
+
+# 4. Tunneling Frontend (Gratis)
+LT_FRONTEND_LOG="$LOG_DIR/lt_frontend.log"
+rotate_log "$LT_FRONTEND_LOG"
+
+echo "Mulai Tunneling Frontend..."
+nohup npx localtunnel --port 3000 > "$LT_FRONTEND_LOG" 2>&1 &
+echo $! > "$LOG_DIR/lt_frontend.pid"
+
+echo "Tunggu sebentar untuk mengambil URL Public Frontend..."
+sleep 3
+
 echo "================================================="
-echo "Services:"
+echo "Services Local:"
 echo "  Python API  -> http://localhost:8000"
 echo "  Go API      -> http://localhost:8080"
 echo "  Frontend    -> http://localhost:3000"
+echo "-------------------------------------------------"
+echo "Public URL (Frontend Only):"
+echo "  Frontend    -> $(grep -o 'https://.*' "$LT_FRONTEND_LOG" || echo "Cek $LT_FRONTEND_LOG")"
 echo "================================================="

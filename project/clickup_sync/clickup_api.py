@@ -125,6 +125,7 @@ def _map_task(t: dict, state: dict | None = None) -> dict:
         "ai_response": state.get("ai_response"),
         "execution_trace": state.get("execution_trace"),
         "comments": state.get("comments", []),
+        "chat_history": state.get("chat_history", []),
         "_clickup_status_id": t.get("status", {}).get("id"),
     }
 
@@ -174,9 +175,15 @@ def reset_task(task_id: str) -> dict:
     kembalikan status ke 'to do'.
     """
     url = f"{_BASE}/task/{task_id}"
-    requests.put(url, headers=_headers(),
-                 json={"status": "to do", "description": ""},
-                 timeout=10)
+    import time
+    for _ in range(3):
+        try:
+            requests.put(url, headers=_headers(),
+                         json={"status": "to do", "description": ""},
+                         timeout=30)
+            break
+        except requests.exceptions.ReadTimeout:
+            time.sleep(1)
     # Hapus semua comment via list + delete
     try:
         coms = requests.get(f"{url}/comment", headers=_headers(), timeout=10).json()
@@ -257,6 +264,14 @@ def update_task(
     _save_ai_state(st)
     
     return {"task_id": task_id, "status": internal, "confidence_score": confidence_score}
+
+def update_chat_history(task_id: str, chat_history: list) -> dict:
+    st = _load_ai_state()
+    if task_id not in st:
+        st[task_id] = {}
+    st[task_id]["chat_history"] = chat_history
+    _save_ai_state(st)
+    return {"task_id": task_id, "status": "ok"}
 
 
 def get_task_details(task_id: str) -> dict | None:

@@ -104,11 +104,11 @@ def score_dnc(
             "60-89: ada gap kecil, masih didukung\n"
             "30-59: sebagian bertentangan dengan reasoning\n"
             "0-29: kontradiksi langsung\n"
-            "Jawab HANYA angka integer."
+            "Jawab HANYA angka integer. PASTIKAN SELALU GUNAKAN BAHASA INDONESIA. DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll)."
         )
         try:
             resp = client.chat.completions.create(
-                model="haiku",
+                model=OLLAMA_MODEL,
                 messages=[{"role": "user", "content": prompt}],
             )
             score_text = resp.choices[0].message.content.strip()
@@ -155,11 +155,12 @@ def shadow_check(
         "Jawab PERSIS dalam format ini (tidak ada teks lain):\n"
         "LOGIC: PASS atau FLAG: [alasan singkat]\n"
         "DISCLOSURE: PASS atau FLAG: [alasan singkat]\n"
-        "RESULT: PASS atau FLAG"
+        "RESULT: PASS atau FLAG\n"
+        "PASTIKAN SELALU GUNAKAN BAHASA INDONESIA. DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll)."
     )
     try:
         resp = shadow_client.chat.completions.create(
-            model="haiku",  # pakai model yang sama, bukan 120B
+            model=OLLAMA_MODEL,  # pakai model yang sama, bukan 120B
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()
@@ -494,13 +495,13 @@ def explain_confidence(
         "Untuk setiap faktor, tulis 2-3 kalimat dalam Bahasa Indonesia yang menjelaskan:\n"
         "1. Mengapa skor itu diberikan berdasarkan konteks query & data nyata\n"
         "2. Apa yang menyebabkan nilai tidak 100% (jika < 100%)\n\n"
-        "PENTING: Jawab HANYA JSON valid ini, tanpa teks lain:\n"
+        "PENTING: Jawab HANYA JSON valid ini, tanpa teks lain. PASTIKAN SEMUA PENJELASAN MENGGUNAKAN BAHASA INDONESIA SAJA. DILARANG KERAS MENGGUNAKAN BAHASA/KARAKTER MANDARIN/CHINESE (seperti 因为, 是, dll).\n"
         '{"completeness":"...","tool_routing":"...","complexity":"...","data_validation":"...","freshness":"...","dnc":"..."}'
     )
 
     try:
         resp = client.chat.completions.create(
-            model="haiku",
+            model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.choices[0].message.content.strip()

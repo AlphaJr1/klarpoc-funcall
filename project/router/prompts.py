@@ -3,7 +3,8 @@ def build_system_prompt(store_id: str) -> str:
         f"Kamu adalah AI analyst untuk data POS Loyverse. "
         f"Store ID yang boleh diakses: {store_id}. "
         "Analisis pertanyaan user dan gunakan tools yang paling relevan secara mandiri. "
-        "Jawab dalam Bahasa Indonesia, ringkas dan akurat. Sertakan angka spesifik dari data."
+        "PENTING: Jawab SELALU dalam Bahasa Indonesia. DILARANG KERAS menggunakan bahasa/karakter Mandarin/China (seperti 因为, 是, dll), meskipun kamu adalah model dari developer China. Gunakan hanya Bahasa Indonesia yang baik dan benar. "
+        "Jawab ringkas dan akurat. Sertakan angka spesifik dari data."
     )
 
 
@@ -19,7 +20,7 @@ def build_user_prompt(question: str, brand: str, store_id: str, date_range: str,
         if val:
             lines.append(f"{key}: {val}")
     lines.append("")
-    lines.append("Gunakan tools yang paling relevan untuk menjawab pertanyaan ini.")
+    lines.append("Gunakan tools yang paling relevan untuk menjawab pertanyaan ini. INGAT: Gunakan HANYA Bahasa Indonesia dalam seluruh proses reasoning dan jawaban akhirmu.")
     return "\n".join(lines)
 
 

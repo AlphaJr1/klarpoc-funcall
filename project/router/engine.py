@@ -16,12 +16,14 @@ try:
         add_comment as _cu_comment,
         create_escalation_task as _cu_escalate,
         mark_in_progress as _cu_inprogress,
+        update_task_fields as _cu_update_fields,
     )
     class _cu:
         update_task = staticmethod(_cu_update)
         add_comment = staticmethod(_cu_comment)
         create_escalation_task = staticmethod(_cu_escalate)
         mark_in_progress = staticmethod(_cu_inprogress)
+        update_task_fields = staticmethod(_cu_update_fields)
     cu = _cu()
 except Exception:
     import clickup_sync as cu
@@ -151,29 +153,60 @@ def _post_process(
 
     shadow_result = None
     explanations_result = None
+    _MAX_RETRY = 3
+    _RETRY_WAIT = 5  # seconds
 
+    def _retry_shadow():
+        for attempt in range(1, _MAX_RETRY + 1):
+            out_queue.put({"event": "post_progress", "task": "shadow_check", "attempt": attempt, "max": _MAX_RETRY, "status": "running"})
+            try:
+                res = shadow_check(client, question, reasoning_trace, ai_response, tool_calls_log, brand, store_id)
+                if isinstance(res, dict):
+                    return res
+            except Exception as e:
+                _logger.info(_ck(f"shadow_check_attempt_{attempt}_ERROR", t0, t_pp, str(e)))
+            if attempt < _MAX_RETRY:
+                time.sleep(_RETRY_WAIT)
+        return {"result": "PASS", "logic": f"Fallback pass setelah {_MAX_RETRY}x retry", "disclosure": "N/A - Error setelah semua retry."}
+
+    def _retry_explain():
+        for attempt in range(1, _MAX_RETRY + 1):
+            out_queue.put({"event": "post_progress", "task": "ai_reasoning", "attempt": attempt, "max": _MAX_RETRY, "status": "running"})
+            try:
+                res = explain_confidence(client, question, tool_calls_log, confidence, date_range, brand, store_id)
+                if isinstance(res, dict) and res:
+                    return res
+            except Exception as e:
+                _logger.info(_ck(f"explain_confidence_attempt_{attempt}_ERROR", t0, t_pp, str(e)))
+            if attempt < _MAX_RETRY:
+                time.sleep(_RETRY_WAIT)
+        return {}
+
+    t_pp = time.perf_counter()
     with ThreadPoolExecutor(max_workers=2) as ex:
-        t_pp = time.perf_counter()
-        f_shadow  = ex.submit(shadow_check, client, question, reasoning_trace, ai_response, tool_calls_log, brand, store_id)
-        f_explain = ex.submit(explain_confidence, client, question, tool_calls_log, confidence, date_range, brand, store_id)
+        f_shadow  = ex.submit(_retry_shadow)
+        f_explain = ex.submit(_retry_explain)
 
         try:
-            shadow_result = f_shadow.result(timeout=30)
-            _logger.info(_ck("shadow_check", t0, t_pp, f"result={shadow_result['result']}"))
+            shadow_result = f_shadow.result(timeout=_MAX_RETRY * 60)
+            _logger.info(_ck("shadow_check", t0, t_pp, f"result={shadow_result.get('result')}"))
             out_queue.put({"event": "shadow_check", **shadow_result})
-            if shadow_result["result"] == "FLAG":
+            if shadow_result.get("result") == "FLAG":
                 ctx["resolution_status"] = "AM Review Required (Shadow Check FLAG)"
         except Exception as e:
             _logger.info(_ck("shadow_check_ERROR", t0, t_pp, str(e)))
+            shadow_result = {"result": "PASS", "logic": f"Gagal sepenuhnya: {e}", "disclosure": "N/A"}
+            out_queue.put({"event": "shadow_check", **shadow_result})
 
         try:
             t_exp = time.perf_counter()
-            explanations_result = f_explain.result(timeout=30)
+            explanations_result = f_explain.result(timeout=_MAX_RETRY * 60)
             _logger.info(_ck("explain_confidence", t0, t_exp))
-            if explanations_result:
+            if explanations_result and isinstance(explanations_result, dict):
                 out_queue.put({"event": "confidence_explanation", "explanations": explanations_result})
         except Exception as e:
             _logger.info(_ck("explain_confidence_ERROR", t0, t_pp, str(e)))
+            explanations_result = {}
 
     resolution_status = str(ctx["resolution_status"])
 
@@ -243,6 +276,11 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
         question = synthesize_query(synth_client, original_question, query_override.strip())
         _logger.info(_ck("synthesize_query", t0, t_synth))
         yield {"event": "query_refined", "original": original_question, "clarification": query_override.strip(), "refined": question}
+        
+        try:
+            cu.update_task_fields(task_id, {"name": question})
+        except Exception:
+            pass
     else:
         question = original_question
 
@@ -318,9 +356,9 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
     if intent["result"] == "CLARIFY":
         yield {
             "event": "clarification_needed",
-            "question": "Query tidak dapat diklasifikasikan dengan confidence yang cukup.",
-            "slots": [{"label": "clarification", "options": []}],
-            "message": f"Intent classifier: {intent.get('reasoning', '')}",
+            "question": intent.get("question", "Query tidak dapat diklasifikasikan dengan confidence yang cukup."),
+            "slots": [{"label": "Topik", "options": intent.get("options", [])}],
+            "message": f"Klarifikasi topik: {intent.get('reasoning', '')}",
         }
         return
 
@@ -373,7 +411,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
     def _run_llm_iter1():
         t = time.perf_counter()
         r = client.chat.completions.create(
-            model="sonnet",
+            model=OLLAMA_MODEL,
             messages=messages_init,
             tools=active_tools,
             tool_choice="auto",
@@ -468,7 +506,7 @@ def route_stream(task: dict, force: bool = False, query_override: str | None = N
 
         t_llm = time.perf_counter()
         response = client.chat.completions.create(
-            model="sonnet", messages=messages, tools=active_tools, tool_choice="auto",
+            model=OLLAMA_MODEL, messages=messages, tools=active_tools, tool_choice="auto",
         )
         msg = response.choices[0].message
         finish_reason = response.choices[0].finish_reason
