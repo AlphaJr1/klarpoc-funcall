@@ -3,10 +3,23 @@ api_key/
 project/logs/
 project/reports/
 project/data/ai_state.json
-project/.DS_Store
+.DS_Store
 .vscode/
 pyrightconfig.json
 klar-doc/
+docs/
+
+# AI Agents
+.agent/
+.agents/
+skills-lock.json
+
+# Node & UI
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
